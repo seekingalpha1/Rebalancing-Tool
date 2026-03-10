@@ -15,11 +15,56 @@
       --danger: #dc2626;
       --bg: #f1f5f9;
       --card-bg: #ffffff;
+      --setup-bg: #ffffff;
       --border: #e2e8f0;
       --text: #0f172a;
       --text-muted: #64748b;
       --header-bg: #0f172a;
+      --input-bg: #ffffff;
+      --input-hover-bg: #ffffff;
+      --table-hover: #f8fafc;
+      --sim-td-sticky: #ffffff;
+      --sim-row1-bg: #eff6ff;
+      --badge-ok-bg: #dcfce7; --badge-ok-text: #15803d;
+      --badge-warn-bg: #fef3c7; --badge-warn-text: #92400e;
+      --badge-err-bg: #fee2e2; --badge-err-text: #991b1b;
+      --dev-pos-bg: #dcfce7; --dev-pos-text: #15803d;
+      --dev-neg-bg: #fee2e2; --dev-neg-text: #991b1b;
+      --dev-ok-bg: #f1f5f9; --dev-ok-text: #64748b;
+      --msg-err-bg: #fee2e2; --msg-err-text: #991b1b; --msg-err-border: #fca5a5;
+      --msg-warn-bg: #fef3c7; --msg-warn-text: #92400e; --msg-warn-border: #fcd34d;
       --radius: 10px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #60a5fa;
+        --primary-hover: #93c5fd;
+        --primary-light: #1e3a5f;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --bg: #0f172a;
+        --card-bg: #1e293b;
+        --setup-bg: #1e293b;
+        --border: #334155;
+        --text: #f1f5f9;
+        --text-muted: #94a3b8;
+        --header-bg: #020617;
+        --input-bg: #0f172a;
+        --input-hover-bg: #0f172a;
+        --table-hover: #263148;
+        --sim-td-sticky: #1e293b;
+        --sim-row1-bg: #1e3a5f;
+        --badge-ok-bg: #14532d; --badge-ok-text: #4ade80;
+        --badge-warn-bg: #451a03; --badge-warn-text: #fbbf24;
+        --badge-err-bg: #450a0a; --badge-err-text: #f87171;
+        --dev-pos-bg: #14532d; --dev-pos-text: #4ade80;
+        --dev-neg-bg: #450a0a; --dev-neg-text: #f87171;
+        --dev-ok-bg: #1e293b; --dev-ok-text: #94a3b8;
+        --msg-err-bg: #450a0a; --msg-err-text: #fca5a5; --msg-err-border: #7f1d1d;
+        --msg-warn-bg: #451a03; --msg-warn-text: #fde68a; --msg-warn-border: #78350f;
+      }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,12 +123,12 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 400px 1fr;
+      grid-template-columns: 420px 1fr;
       height: calc(100vh - 56px);
     }
 
     .setup-panel {
-      background: white;
+      background: var(--setup-bg);
       border-right: 1px solid var(--border);
       overflow-y: auto;
       display: flex;
@@ -120,7 +165,7 @@
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-outline:hover { background: var(--bg); }
     .btn-ghost { background: transparent; border: none; color: var(--text-muted); padding: 4px 6px; font-size: 13px; }
-    .btn-ghost:hover { color: var(--danger); background: #fee2e2; border-radius: 4px; }
+    .btn-ghost:hover { color: var(--danger); background: var(--badge-err-bg); border-radius: 4px; }
     .btn-calc {
       background: var(--primary);
       color: white;
@@ -133,7 +178,16 @@
       transition: all 0.2s;
     }
     .btn-calc:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
-    .btn-add { background: var(--bg); border: 1px dashed var(--border); color: var(--text-muted); font-size: 12px; width: 100%; justify-content: center; padding: 8px; border-radius: 6px; }
+    .btn-add {
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      width: 100%;
+      justify-content: center;
+      padding: 8px;
+      border-radius: 6px;
+    }
     .btn-add:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
     /* === Setup Panel Sections === */
@@ -166,9 +220,9 @@
       border-radius: 999px;
     }
 
-    .badge-ok { background: #dcfce7; color: #15803d; }
-    .badge-warn { background: #fef3c7; color: #92400e; }
-    .badge-error { background: #fee2e2; color: #991b1b; }
+    .badge-ok { background: var(--badge-ok-bg); color: var(--badge-ok-text); }
+    .badge-warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+    .badge-error { background: var(--badge-err-bg); color: var(--badge-err-text); }
     .badge-neutral { background: var(--bg); color: var(--text-muted); }
 
     /* === Tables === */
@@ -195,7 +249,7 @@
     }
 
     .data-table tr:first-child td { border-top: none; }
-    .data-table tr:hover td { background: #f8fafc; }
+    .data-table tr:hover td { background: var(--table-hover); }
 
     /* === Inline Inputs === */
     .input-inline {
@@ -203,18 +257,26 @@
       background: transparent;
       padding: 5px 7px;
       border-radius: 5px;
-      font-size: 13px;
+      font-size: 16px;
       color: var(--text);
       width: 100%;
       transition: all 0.1s;
-      /* Prevent zoom on iOS for font-size < 16px */
-      font-size: max(13px, 16px);
     }
 
-    .input-inline:hover { border-color: var(--border); background: white; }
-    .input-inline:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+    .input-inline:hover { border-color: var(--border); background: var(--input-hover-bg); }
+    .input-inline:focus { outline: none; border-color: var(--primary); background: var(--input-bg); box-shadow: 0 0 0 2px rgba(96,165,250,0.15); }
 
-    select.input-inline { cursor: pointer; }
+    select.input-inline {
+      cursor: pointer;
+      background: transparent;
+      -webkit-appearance: auto;
+      color: var(--text);
+    }
+
+    select.input-inline:hover,
+    select.input-inline:focus {
+      background: var(--input-bg);
+    }
 
     /* Color dot */
     .color-dot {
@@ -223,6 +285,17 @@
       border-radius: 50%;
       display: inline-block;
       flex-shrink: 0;
+    }
+
+    /* ETF broker badge */
+    .broker-tag {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 4px;
+      display: inline-block;
     }
 
     /* === Settings === */
@@ -250,14 +323,14 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 8px 10px;
-      font-size: 16px; /* 16px prevents iOS zoom */
+      font-size: 16px;
       color: var(--text);
-      background: white;
+      background: var(--input-bg);
       width: 100%;
       transition: border-color 0.15s;
     }
 
-    .field-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .field-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(96,165,250,0.15); }
 
     /* === Validation messages === */
     .msg {
@@ -270,13 +343,13 @@
       margin-bottom: 8px;
     }
 
-    .msg-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    .msg-warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .msg-error { background: var(--msg-err-bg); color: var(--msg-err-text); border: 1px solid var(--msg-err-border); }
+    .msg-warn { background: var(--msg-warn-bg); color: var(--msg-warn-text); border: 1px solid var(--msg-warn-border); }
     .msg-icon { flex-shrink: 0; margin-top: 1px; }
 
     /* === Cards === */
     .card {
-      background: white;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 18px;
@@ -316,7 +389,7 @@
       transition: box-shadow 0.15s;
     }
 
-    .rec-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .rec-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
 
     .rec-card .rc-cat {
       font-size: 10px;
@@ -332,10 +405,17 @@
     .rec-card .rc-name {
       font-size: 12px;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .rec-card .rc-broker {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      opacity: 0.7;
     }
 
     .rec-card .rc-amount {
@@ -411,9 +491,9 @@
       border-radius: 4px;
     }
 
-    .dev-pos { background: #dcfce7; color: #15803d; }
-    .dev-neg { background: #fee2e2; color: #991b1b; }
-    .dev-ok { background: #f1f5f9; color: var(--text-muted); }
+    .dev-pos { background: var(--dev-pos-bg); color: var(--dev-pos-text); }
+    .dev-neg { background: var(--dev-neg-bg); color: var(--dev-neg-text); }
+    .dev-ok  { background: var(--dev-ok-bg);  color: var(--dev-ok-text); }
 
     /* === Simulation Table === */
     .sim-wrap { overflow-x: auto; }
@@ -441,20 +521,21 @@
       padding: 6px 10px;
       text-align: right;
       border-bottom: 1px solid var(--border);
+      color: var(--text);
     }
 
     .sim-table td:first-child {
       text-align: left;
       position: sticky;
       left: 0;
-      background: white;
+      background: var(--sim-td-sticky);
       z-index: 1;
       font-weight: 500;
     }
 
-    .sim-table tr:hover td { background: #f8fafc; }
-    .sim-table tr:hover td:first-child { background: #f8fafc; }
-    .sim-table .month-1 td { background: var(--primary-light) !important; font-weight: 700; }
+    .sim-table tr:hover td { background: var(--table-hover); }
+    .sim-table tr:hover td:first-child { background: var(--table-hover); }
+    .sim-table .month-1 td { background: var(--sim-row1-bg) !important; font-weight: 700; }
 
     /* === Summary Stats === */
     .stats-row {
@@ -463,7 +544,7 @@
     }
 
     .stat-item {
-      background: white;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 12px 16px;
@@ -519,10 +600,18 @@
     .flex-center { display: flex; align-items: center; gap: 6px; }
     .euro-val { font-variant-numeric: tabular-nums; }
 
+    /* weight-hint: shows normalized % alongside raw ratio */
+    .weight-hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      padding-left: 2px;
+      white-space: nowrap;
+    }
+
     /* === Calc footer === */
     .calc-footer {
       padding: 16px 20px;
-      background: white;
+      background: var(--setup-bg);
       border-top: 1px solid var(--border);
       position: sticky;
       bottom: 0;
@@ -557,7 +646,7 @@
 <header>
   <div class="header-left">
     <h1>ETF Rebalancing Tool</h1>
-    <span class="header-sub">v1.0</span>
+    <span class="header-sub">v2.0</span>
   </div>
   <div class="header-actions">
     <button class="btn btn-secondary" onclick="loadSampleData()">Sample Data</button>
@@ -601,14 +690,14 @@ const PALETTE = [
   '#14b8a6','#a855f7','#fb923c','#22c55e','#e879f9'
 ];
 
-const LS_KEY = 'etf-rebalancing-v1';
+const LS_KEY = 'etf-rebalancing-v2';
 
 // ===========================
 // STATE
 // ===========================
 let state = {
   categories: [],
-  etfs: [],
+  etfs: [],        // { id, name, broker, currentValue, categoryId, ratio }
   settings: { monthlySavings: 1000, simulationMonths: 12 }
 };
 
@@ -642,13 +731,13 @@ function genId() {
 
 function fmt(num, decimals) {
   if (decimals === undefined) decimals = 2;
-  if (num === null || num === undefined || isNaN(num)) return '\u2013';
+  if (num === null || num === undefined || isNaN(num)) return '–';
   return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 function fmtEur(num, decimals) {
   if (decimals === undefined) decimals = 2;
-  return fmt(num, decimals) + '\u00a0\u20ac';
+  return fmt(num, decimals) + ' €';
 }
 
 function colorFor(cat) {
@@ -666,6 +755,19 @@ function escHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Compute normalized weight (%) for each ETF within its category
+function normalizedWeights() {
+  var result = {};
+  state.categories.forEach(function(cat) {
+    var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
+    var totalRatio = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.ratio) || 0); }, 0);
+    catEtfs.forEach(function(etf) {
+      result[etf.id] = totalRatio > 0 ? (parseFloat(etf.ratio) || 0) / totalRatio * 100 : 0;
+    });
+  });
+  return result;
+}
+
 // ===========================
 // VALIDATION
 // ===========================
@@ -678,7 +780,7 @@ function validate() {
   } else {
     var totalPct = state.categories.reduce(function(s, c) { return s + (parseFloat(c.targetPct) || 0); }, 0);
     if (Math.abs(totalPct - 100) > 0.01) {
-      errors.push('Target allocation sums to ' + fmt(totalPct, 1) + '% (must be exactly 100%).');
+      errors.push('Category target allocations sum to ' + fmt(totalPct, 1) + '% (must be exactly 100%).');
     }
   }
 
@@ -689,18 +791,18 @@ function validate() {
   state.categories.forEach(function(cat) {
     var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
     if (catEtfs.length === 0) {
-      warnings.push('Category \u201c' + cat.name + '\u201d contains no ETFs.');
+      warnings.push('Category "' + cat.name + '" has no ETFs assigned.');
     } else {
-      var totalW = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.weight) || 0); }, 0);
-      if (Math.abs(totalW - 100) > 0.01) {
-        errors.push('ETF weights in \u201c' + cat.name + '\u201d sum to ' + fmt(totalW, 1) + '% (must be 100%).');
+      var totalRatio = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.ratio) || 0); }, 0);
+      if (totalRatio <= 0) {
+        errors.push('All ETF ratios in "' + cat.name + '" are zero.');
       }
     }
   });
 
   state.etfs.forEach(function(etf) {
     if (!state.categories.find(function(c) { return c.id === etf.categoryId; })) {
-      errors.push('ETF \u201c' + etf.name + '\u201d has no valid category.');
+      errors.push('ETF "' + etf.name + '" has no valid category assigned.');
     }
   });
 
@@ -714,42 +816,48 @@ function validate() {
 // ===========================
 // ALGORITHM
 // ===========================
+// Compute the global target fraction for each ETF (category% × normalized ETF ratio within category)
 function computeGlobalTargets() {
+  var normWeights = normalizedWeights();
   return state.etfs.map(function(etf) {
     var cat = state.categories.find(function(c) { return c.id === etf.categoryId; });
     var globalFraction = cat
-      ? (parseFloat(cat.targetPct) / 100) * (parseFloat(etf.weight) / 100)
+      ? (parseFloat(cat.targetPct) / 100) * ((normWeights[etf.id] || 0) / 100)
       : 0;
     return Object.assign({}, etf, { globalFraction: globalFraction });
   });
 }
 
-function calcMonthAllocation(currentValues, etfTargets, savings) {
+// Compute CONSTANT monthly allocation per ETF (same amount every month).
+// Strategy: find the split of monthly savings that, if applied for N months,
+// brings the portfolio closest to the target allocation.
+function calcConstantAllocations(etfTargets, currentValues, savings, months) {
   var total = Object.values(currentValues).reduce(function(a, b) { return a + b; }, 0);
-  var newTotal = total + savings;
+  var futureTotal = total + savings * months;
 
+  // How much to invest in each ETF over N months to reach target
   var needed = {};
-  var totalNeeded = 0;
-
   etfTargets.forEach(function(etf) {
-    var targetVal = etf.globalFraction * newTotal;
-    var curVal = currentValues[etf.id] || 0;
-    var need = Math.max(0, targetVal - curVal);
-    needed[etf.id] = need;
-    totalNeeded += need;
+    var targetFinal = etf.globalFraction * futureTotal;
+    var cur = currentValues[etf.id] || 0;
+    needed[etf.id] = Math.max(0, targetFinal - cur);
   });
+
+  var totalNeeded = Object.values(needed).reduce(function(a, b) { return a + b; }, 0);
 
   var alloc = {};
   if (totalNeeded > 0) {
+    // Proportional split of monthly savings
     etfTargets.forEach(function(etf) {
       alloc[etf.id] = (needed[etf.id] / totalNeeded) * savings;
     });
   } else {
+    // Portfolio already at or beyond target: invest proportional to target fractions
     var totalFraction = etfTargets.reduce(function(s, e) { return s + e.globalFraction; }, 0);
     etfTargets.forEach(function(etf) {
       alloc[etf.id] = totalFraction > 0
         ? (etf.globalFraction / totalFraction) * savings
-        : savings / etfTargets.length;
+        : savings / Math.max(etfTargets.length, 1);
     });
   }
 
@@ -766,47 +874,45 @@ function simulate() {
     currentValues[etf.id] = parseFloat(etf.currentValue) || 0;
   });
 
+  // Compute ONCE — same allocation every month
+  var constAlloc = calcConstantAllocations(etfTargets, currentValues, savings, months);
+
   var results = [];
+  var runningValues = Object.assign({}, currentValues);
 
   for (var m = 0; m < months; m++) {
-    var alloc = calcMonthAllocation(currentValues, etfTargets, savings);
-
-    var newValues = Object.assign({}, currentValues);
-    Object.keys(alloc).forEach(function(id) {
-      newValues[id] = (newValues[id] || 0) + alloc[id];
+    // Apply constant allocation
+    var newValues = Object.assign({}, runningValues);
+    Object.keys(constAlloc).forEach(function(id) {
+      newValues[id] = (newValues[id] || 0) + constAlloc[id];
     });
     var newTotal = Object.values(newValues).reduce(function(a, b) { return a + b; }, 0);
 
     var catDeviations = {};
     state.categories.forEach(function(cat) {
       var catEtfs = etfTargets.filter(function(e) { return e.categoryId === cat.id; });
-      var actualPct = catEtfs.reduce(function(s, e) { return s + (newValues[e.id] || 0); }, 0) / newTotal * 100;
+      var actualPct = newTotal > 0
+        ? catEtfs.reduce(function(s, e) { return s + (newValues[e.id] || 0); }, 0) / newTotal * 100
+        : 0;
       var targetPct = parseFloat(cat.targetPct);
-      catDeviations[cat.id] = {
-        actual: actualPct,
-        target: targetPct,
-        deviation: actualPct - targetPct
-      };
+      catDeviations[cat.id] = { actual: actualPct, target: targetPct, deviation: actualPct - targetPct };
     });
 
     var devVals = Object.values(catDeviations).map(function(d) { return Math.abs(d.deviation); });
     var maxDev = Math.max.apply(null, devVals);
-    var avgDev = devVals.reduce(function(a, b) { return a + b; }, 0) / state.categories.length;
-
-    var allocCopy = Object.assign({}, alloc);
-    var valuesCopy = Object.assign({}, newValues);
+    var avgDev = devVals.reduce(function(a, b) { return a + b; }, 0) / Math.max(state.categories.length, 1);
 
     results.push({
       month: m + 1,
-      alloc: allocCopy,
-      values: valuesCopy,
+      alloc: constAlloc,           // same every month
+      values: Object.assign({}, newValues),
       total: newTotal,
       catDeviations: catDeviations,
       maxDev: maxDev,
       avgDev: avgDev
     });
 
-    currentValues = Object.assign({}, newValues);
+    runningValues = Object.assign({}, newValues);
   }
 
   return results;
@@ -825,7 +931,7 @@ function renderCategories() {
   var totalPct = state.categories.reduce(function(s, c) { return s + (parseFloat(c.targetPct) || 0); }, 0);
   var diff = Math.abs(totalPct - 100);
   var badgeCls = 'badge-neutral';
-  var badgeTxt = '\u2013';
+  var badgeTxt = '–';
   if (state.categories.length > 0) {
     badgeTxt = fmt(totalPct, 1) + '% Target';
     badgeCls = diff < 0.01 ? 'badge-ok' : (diff < 5 ? 'badge-warn' : 'badge-error');
@@ -840,13 +946,13 @@ function renderCategories() {
         ' oninput="stateCatField(\'' + cat.id + '\',\'name\',this.value)"' +
         ' onblur="renderSetup()" style="width:100%"></td>' +
       '<td style="width:100px"><div style="display:flex;align-items:center;gap:3px">' +
-        '<input class="input-inline" type="number" min="0" max="100" step="0.1" value="' + cat.targetPct + '"' +
+        '<input class="input-inline" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="' + cat.targetPct + '"' +
         ' oninput="stateCatField(\'' + cat.id + '\',\'targetPct\',this.value)"' +
         ' onblur="renderCategories()"' +
         ' style="width:58px;text-align:right">' +
         '<span style="color:var(--text-muted);font-size:12px">%</span>' +
       '</div></td>' +
-      '<td style="width:30px;text-align:right"><button class="btn btn-ghost" onclick="removeCategory(\'' + cat.id + '\')" title="Delete">\u2715</button></td>' +
+      '<td style="width:30px;text-align:right"><button class="btn btn-ghost" onclick="removeCategory(\'' + cat.id + '\')" title="Delete">✕</button></td>' +
       '</tr>';
   });
 
@@ -861,48 +967,81 @@ function renderCategories() {
 }
 
 function renderETFs() {
+  var normWeights = normalizedWeights();
   var rows = '';
+
   state.etfs.forEach(function(etf) {
-    var catOptions = '<option value="">- Select -</option>';
+    var catOptions = '<option value="">— Select Category —</option>';
     state.categories.forEach(function(c) {
       catOptions += '<option value="' + c.id + '"' + (c.id === etf.categoryId ? ' selected' : '') + '>' + escHtml(c.name) + '</option>';
     });
 
+    var effPct = normWeights[etf.id];
+    var effHint = (etf.categoryId && effPct !== undefined)
+      ? '<span class="weight-hint">= ' + fmt(effPct, 0) + '%</span>'
+      : '';
+
     rows += '<tr>' +
-      '<td><input class="input-inline" value="' + escHtml(etf.name) + '"' +
+      '<td style="min-width:90px">' +
+        '<input class="input-inline" value="' + escHtml(etf.name) + '" placeholder="ETF name"' +
         ' oninput="stateEtfField(\'' + etf.id + '\',\'name\',this.value)"' +
-        ' onblur="renderETFs()" style="width:100%;min-width:70px"></td>' +
-      '<td><select class="input-inline" onchange="updateETF(\'' + etf.id + '\',\'categoryId\',this.value)" style="width:100%;min-width:80px">' + catOptions + '</select></td>' +
-      '<td><input class="input-inline" type="number" min="0" step="100" value="' + etf.currentValue + '"' +
+        ' onblur="renderETFs()" style="width:100%">' +
+      '</td>' +
+      '<td style="min-width:70px">' +
+        '<input class="input-inline" value="' + escHtml(etf.broker || '') + '" placeholder="Broker"' +
+        ' oninput="stateEtfField(\'' + etf.id + '\',\'broker\',this.value)"' +
+        ' onblur="renderETFs()" style="width:100%">' +
+      '</td>' +
+      '<td style="min-width:95px">' +
+        '<input class="input-inline" type="number" inputmode="decimal" min="0" step="100" value="' + (etf.currentValue || 0) + '"' +
         ' oninput="stateEtfField(\'' + etf.id + '\',\'currentValue\',this.value)"' +
-        ' onblur="renderETFs()" style="width:90px;text-align:right"></td>' +
-      '<td><div style="display:flex;align-items:center;gap:2px">' +
-        '<input class="input-inline" type="number" min="0" max="100" step="1" value="' + etf.weight + '"' +
-        ' oninput="stateEtfField(\'' + etf.id + '\',\'weight\',this.value)"' +
-        ' onblur="renderETFs()" style="width:50px;text-align:right">' +
-        '<span style="color:var(--text-muted);font-size:11px">%</span>' +
-      '</div></td>' +
-      '<td style="width:30px;text-align:right"><button class="btn btn-ghost" onclick="removeETF(\'' + etf.id + '\')" title="Delete">\u2715</button></td>' +
+        ' onblur="renderETFs()" style="width:85px;text-align:right">' +
+      '</td>' +
+      '<td style="min-width:90px">' +
+        '<select class="input-inline" onchange="updateETF(\'' + etf.id + '\',\'categoryId\',this.value)" style="width:100%">' + catOptions + '</select>' +
+      '</td>' +
+      '<td style="min-width:75px">' +
+        '<div style="display:flex;align-items:center;gap:2px">' +
+          '<input class="input-inline" type="number" inputmode="decimal" min="0" step="1" value="' + (etf.ratio || 0) + '"' +
+          ' oninput="stateEtfField(\'' + etf.id + '\',\'ratio\',this.value)"' +
+          ' onblur="renderETFs()" style="width:44px;text-align:right" title="Relative ratio within category (auto-normalized)">' +
+          effHint +
+        '</div>' +
+      '</td>' +
+      '<td style="width:30px;text-align:right"><button class="btn btn-ghost" onclick="removeETF(\'' + etf.id + '\')" title="Delete">✕</button></td>' +
       '</tr>';
   });
 
-  // Per-category weight summaries
+  // Per-category ratio summary
   var catSummaries = '';
   state.categories.forEach(function(cat) {
     var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
     if (catEtfs.length === 0) return;
-    var total = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.weight) || 0); }, 0);
-    var ok = Math.abs(total - 100) < 0.01;
+    var totalRatio = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.ratio) || 0); }, 0);
+    var ok = totalRatio > 0;
     var color = colorFor(cat);
-    catSummaries += '<span style="font-size:11px;margin-right:10px;color:var(--text-muted)">' +
-      '<span class="color-dot" style="background:' + color + ';margin-right:3px;vertical-align:middle"></span>' +
-      '<b>' + escHtml(cat.name) + '</b>: ' +
-      '<span style="color:' + (ok ? '#15803d' : '#dc2626') + ';font-weight:600">' + fmt(total, 0) + '%</span>' +
+    catSummaries +=
+      '<span style="font-size:11px;margin-right:10px;color:var(--text-muted)">' +
+        '<span class="color-dot" style="background:' + color + ';margin-right:3px;vertical-align:middle"></span>' +
+        '<b>' + escHtml(cat.name) + '</b>: ' +
+        '<span style="color:' + (ok ? 'var(--success)' : 'var(--danger)') + ';font-weight:600">' +
+          catEtfs.length + ' ETF' + (catEtfs.length !== 1 ? 's' : '') +
+        '</span>' +
       '</span>';
   });
 
   var tableHtml = state.etfs.length > 0
-    ? '<table class="data-table"><thead><tr><th>Name</th><th>Category</th><th style="text-align:right">Value (€)</th><th style="text-align:right">Weight</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>'
+    ? '<div style="overflow-x:auto"><table class="data-table">' +
+        '<thead><tr>' +
+          '<th>Name</th>' +
+          '<th>Broker</th>' +
+          '<th style="text-align:right">Value (€)</th>' +
+          '<th>Category</th>' +
+          '<th style="text-align:right" title="Relative ratio within the category. Will be auto-normalized.">Ratio</th>' +
+          '<th></th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table></div>'
     : '<p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">No ETFs yet.</p>';
 
   var countBadge = state.etfs.length > 0
@@ -912,6 +1051,9 @@ function renderETFs() {
   document.getElementById('setup-etfs').innerHTML =
     '<div class="section-header"><span class="section-title">ETFs</span>' + countBadge + '</div>' +
     (catSummaries ? '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap">' + catSummaries + '</div>' : '') +
+    '<p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">' +
+      'Ratio = relative weight within category (auto-normalized). Multiple ETFs in the same category? Enter any numbers, e.g. 90 &amp; 10.' +
+    '</p>' +
     tableHtml +
     '<button class="btn btn-add" onclick="addETF()">+ Add ETF</button>';
 }
@@ -921,13 +1063,13 @@ function renderSettings() {
     '<div class="section-header"><span class="section-title">Settings</span></div>' +
     '<div class="settings-grid">' +
       '<div class="field-group">' +
-        '<label class="field-label">Monthly Savings Rate (\u20ac)</label>' +
-        '<input class="field-input" type="number" min="1" step="50" value="' + state.settings.monthlySavings + '"' +
+        '<label class="field-label">Monthly Savings Rate (€)</label>' +
+        '<input class="field-input" type="number" inputmode="decimal" min="1" step="50" value="' + state.settings.monthlySavings + '"' +
         ' oninput="updateSettings(\'monthlySavings\', this.value)">' +
       '</div>' +
       '<div class="field-group">' +
         '<label class="field-label">Simulation Months</label>' +
-        '<input class="field-input" type="number" min="1" max="120" step="1" value="' + state.settings.simulationMonths + '"' +
+        '<input class="field-input" type="number" inputmode="numeric" min="1" max="120" step="1" value="' + state.settings.simulationMonths + '"' +
         ' oninput="updateSettings(\'simulationMonths\', this.value)">' +
       '</div>' +
     '</div>';
@@ -942,10 +1084,10 @@ function calculate() {
   var valArea = document.getElementById('validation-area');
   var html = '';
   validation.errors.forEach(function(e) {
-    html += '<div class="msg msg-error"><span class="msg-icon">\u26a0</span><span>' + escHtml(e) + '</span></div>';
+    html += '<div class="msg msg-error"><span class="msg-icon">⚠</span><span>' + escHtml(e) + '</span></div>';
   });
   validation.warnings.forEach(function(w) {
-    html += '<div class="msg msg-warn"><span class="msg-icon">\u2139</span><span>' + escHtml(w) + '</span></div>';
+    html += '<div class="msg msg-warn"><span class="msg-icon">ℹ</span><span>' + escHtml(w) + '</span></div>';
   });
   valArea.innerHTML = html;
 
@@ -975,28 +1117,30 @@ function renderResults(months) {
         '<div class="stat-sub">' + state.etfs.length + ' ETFs &middot; ' + state.categories.length + ' Categories</div>' +
       '</div>' +
       '<div class="stat-item">' +
-        '<div class="stat-label">Savings / Month</div>' +
+        '<div class="stat-label">Fixed Savings / Month</div>' +
         '<div class="stat-value" style="color:var(--primary)">' + fmtEur(savings, 0) + '</div>' +
         '<div class="stat-sub">' + state.settings.simulationMonths + ' months simulated</div>' +
       '</div>' +
       '<div class="stat-item">' +
-        '<div class="stat-label">Max. Deviation</div>' +
+        '<div class="stat-label">Max. Deviation (Now)</div>' +
         '<div class="stat-value" style="color:' + devColor + '">' + fmt(maxDevBefore, 1) + '%</div>' +
-        '<div class="stat-sub">after Month 1: <span style="color:' + (devChange < 0 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600">' + (devChange < 0 ? '\u2193 ' : '\u2191 ') + fmt(Math.abs(devChange), 1) + '%</span></div>' +
+        '<div class="stat-sub">after Month 1: <span style="color:' + (devChange <= 0 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600">' + (devChange <= 0 ? '↓ ' : '↑ ') + fmt(Math.abs(devChange), 1) + '%</span></div>' +
       '</div>' +
     '</div>';
 
-  // Recommendation
+  // Fixed savings plan cards
   var recCards = '';
   state.etfs.forEach(function(etf) {
     var cat = state.categories.find(function(c) { return c.id === etf.categoryId; });
     var amount = m1.alloc[etf.id] || 0;
     var pct = savings > 0 ? (amount / savings * 100) : 0;
     var color = cat ? colorFor(cat) : '#ccc';
+    var brokerHtml = etf.broker ? '<div class="rc-broker">' + escHtml(etf.broker) + '</div>' : '<div class="rc-broker">&nbsp;</div>';
     recCards +=
       '<div class="rec-card">' +
         '<div class="rc-cat" style="background:' + color + '20;color:' + color + '">' + escHtml(cat ? cat.name : '?') + '</div>' +
         '<div class="rc-name" title="' + escHtml(etf.name) + '">' + escHtml(etf.name) + '</div>' +
+        brokerHtml +
         '<div class="rc-amount">' + fmt(amount, 0) + '</div>' +
         '<div class="rc-pct">' + fmt(pct, 1) + '% &middot; ' + fmtEur(amount, 2) + '</div>' +
       '</div>';
@@ -1005,8 +1149,8 @@ function renderResults(months) {
   var recHtml =
     '<div class="card">' +
       '<div class="card-header"><div>' +
-        '<div class="card-title">Recommendation for This Month</div>' +
-        '<div class="card-subtitle">Optimal distribution of the ' + fmtEur(savings, 0) + ' savings rate</div>' +
+        '<div class="card-title">Fixed Monthly Savings Plan</div>' +
+        '<div class="card-subtitle">Constant monthly contribution per ETF — same amount every month</div>' +
       '</div></div>' +
       '<div class="rec-grid">' + recCards + '</div>' +
     '</div>';
@@ -1015,12 +1159,14 @@ function renderResults(months) {
   var allocRows = '';
   state.categories.forEach(function(cat) {
     var catEtfs = etfTargets.filter(function(e) { return e.categoryId === cat.id; });
-    var actualPct = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.currentValue) || 0); }, 0) / (totalPortfolio || 1) * 100;
+    var actualPct = totalPortfolio > 0
+      ? catEtfs.reduce(function(s, e) { return s + (parseFloat(e.currentValue) || 0); }, 0) / totalPortfolio * 100
+      : 0;
     var targetPct = parseFloat(cat.targetPct);
     var dev = actualPct - targetPct;
     var devAbs = Math.abs(dev);
     var devCls = devAbs < 1 ? 'dev-ok' : (dev > 0 ? 'dev-pos' : 'dev-neg');
-    var devLabel = devAbs < 0.05 ? '\u22480' : ((dev > 0 ? '+' : '') + fmt(dev, 1) + '%');
+    var devLabel = devAbs < 0.05 ? '≈0' : ((dev > 0 ? '+' : '') + fmt(dev, 1) + '%');
     var color = colorFor(cat);
 
     allocRows +=
@@ -1091,7 +1237,8 @@ function buildSimTable(months) {
 
   var headerCols = '<th>Month</th>';
   state.etfs.forEach(function(etf) {
-    headerCols += '<th>' + escHtml(etf.name) + '</th>';
+    var label = escHtml(etf.name) + (etf.broker ? ' <span style="font-weight:400;opacity:0.7">(' + escHtml(etf.broker) + ')</span>' : '');
+    headerCols += '<th>' + label + '</th>';
   });
   headerCols += '<th>Total</th><th>Max Dev.</th>';
 
@@ -1099,7 +1246,7 @@ function buildSimTable(months) {
   months.forEach(function(m) {
     var isM1 = m.month === 1;
     rows += '<tr class="' + (isM1 ? 'month-1' : '') + '">';
-    rows += '<td>' + (isM1 ? '\u25b6 ' : '') + 'Month ' + m.month + '</td>';
+    rows += '<td>' + (isM1 ? '▶ ' : '') + 'Month ' + m.month + '</td>';
     var rowTotal = 0;
     state.etfs.forEach(function(etf) {
       var amt = m.alloc[etf.id] || 0;
@@ -1113,8 +1260,8 @@ function buildSimTable(months) {
 
   return '<div class="card">' +
     '<div class="card-header"><div>' +
-      '<div class="card-title">Simulation \u2013 Recommended Savings</div>' +
-      '<div class="card-subtitle">All amounts in \u20ac. Month 1 (highlighted) is the current recommendation.</div>' +
+      '<div class="card-title">Simulation – Fixed Monthly Savings Plan</div>' +
+      '<div class="card-subtitle">All amounts in €. The monthly contribution per ETF is constant across all months. Month 1 is highlighted.</div>' +
     '</div></div>' +
     '<div class="sim-wrap"><table class="sim-table"><thead><tr>' + headerCols + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
     '</div>';
@@ -1126,6 +1273,14 @@ function buildSimTable(months) {
 function destroyChart(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
 }
+
+function isDarkMode() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function chartGridColor() { return isDarkMode() ? '#334155' : '#f1f5f9'; }
+function chartTickColor() { return isDarkMode() ? '#94a3b8' : '#64748b'; }
+function chartLegendColor() { return isDarkMode() ? '#f1f5f9' : '#0f172a'; }
 
 function renderAllocChart(months, etfTargets) {
   destroyChart('alloc');
@@ -1139,13 +1294,32 @@ function renderAllocChart(months, etfTargets) {
     var color = colorFor(cat);
     var data = months.map(function(m) {
       var catEtfs = etfTargets.filter(function(e) { return e.categoryId === cat.id; });
-      return catEtfs.reduce(function(s, e) { return s + (m.values[e.id] || 0); }, 0) / m.total * 100;
+      return m.total > 0
+        ? catEtfs.reduce(function(s, e) { return s + (m.values[e.id] || 0); }, 0) / m.total * 100
+        : 0;
     });
-    datasets.push({ label: cat.name, data: data, borderColor: color, backgroundColor: color + '22', fill: false, tension: 0.3, pointRadius: months.length <= 24 ? 3 : 1, borderWidth: 2 });
-    // Dashed target line
-    datasets.push({ label: cat.name + ' (Target)', data: months.map(function() { return parseFloat(cat.targetPct); }), borderColor: color, borderDash: [5, 5], borderWidth: 1, pointRadius: 0, fill: false });
+    datasets.push({
+      label: cat.name,
+      data: data,
+      borderColor: color,
+      backgroundColor: color + '22',
+      fill: false,
+      tension: 0.3,
+      pointRadius: months.length <= 24 ? 3 : 1,
+      borderWidth: 2
+    });
+    datasets.push({
+      label: cat.name + ' (Target)',
+      data: months.map(function() { return parseFloat(cat.targetPct); }),
+      borderColor: color,
+      borderDash: [5, 5],
+      borderWidth: 1,
+      pointRadius: 0,
+      fill: false
+    });
   });
 
+  var gc = chartGridColor(), tc = chartTickColor(), lc = chartLegendColor();
   charts['alloc'] = new Chart(canvas, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
@@ -1153,13 +1327,18 @@ function renderAllocChart(months, etfTargets) {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 8,
-          filter: function(item) { return item.text.indexOf('(Target)') === -1; } } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: { size: 11 }, boxWidth: 12, padding: 8, color: lc,
+            filter: function(item) { return item.text.indexOf('(Target)') === -1; }
+          }
+        },
         tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmt(ctx.raw, 1) + '%'; } } }
       },
       scales: {
-        y: { ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
-        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+        y: { ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 }, color: tc }, grid: { color: gc } },
+        x: { ticks: { font: { size: 11 }, color: tc }, grid: { display: false } }
       }
     }
   });
@@ -1171,26 +1350,46 @@ function renderDevChart(months) {
   if (!canvas) return;
 
   var labels = months.map(function(m) { return 'M' + m.month; });
+  var gc = chartGridColor(), tc = chartTickColor(), lc = chartLegendColor();
 
   charts['dev'] = new Chart(canvas, {
     type: 'line',
     data: {
       labels: labels,
       datasets: [
-        { label: 'Max. Deviation', data: months.map(function(m) { return m.maxDev; }), borderColor: '#ef4444', backgroundColor: '#ef444422', fill: true, tension: 0.3, pointRadius: months.length <= 24 ? 3 : 1, borderWidth: 2 },
-        { label: 'Avg. Deviation', data: months.map(function(m) { return m.avgDev; }), borderColor: '#f59e0b', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: months.length <= 24 ? 3 : 1, borderWidth: 2, borderDash: [4, 3] }
+        {
+          label: 'Max. Deviation',
+          data: months.map(function(m) { return m.maxDev; }),
+          borderColor: '#ef4444',
+          backgroundColor: isDarkMode() ? 'rgba(239,68,68,0.15)' : '#ef444422',
+          fill: true,
+          tension: 0.3,
+          pointRadius: months.length <= 24 ? 3 : 1,
+          borderWidth: 2
+        },
+        {
+          label: 'Avg. Deviation',
+          data: months.map(function(m) { return m.avgDev; }),
+          borderColor: '#f59e0b',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: months.length <= 24 ? 3 : 1,
+          borderWidth: 2,
+          borderDash: [4, 3]
+        }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 8, color: lc } },
         tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmt(ctx.raw, 2) + '%'; } } }
       },
       scales: {
-        y: { min: 0, ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
-        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+        y: { min: 0, ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 }, color: tc }, grid: { color: gc } },
+        x: { ticks: { font: { size: 11 }, color: tc }, grid: { display: false } }
       }
     }
   });
@@ -1210,7 +1409,7 @@ function stateCatField(id, field, value) {
 function stateEtfField(id, field, value) {
   state.etfs = state.etfs.map(function(e) {
     if (e.id !== id) return e;
-    var v = (['currentValue', 'weight'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
+    var v = (['currentValue', 'ratio'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
     return Object.assign({}, e, { [field]: v });
   });
   saveState();
@@ -1243,7 +1442,7 @@ function removeCategory(id) {
 function addETF() {
   var newId = genId();
   var defaultCat = state.categories.length > 0 ? state.categories[0].id : '';
-  state.etfs.push({ id: newId, name: '', categoryId: defaultCat, currentValue: 0, weight: 100 });
+  state.etfs.push({ id: newId, name: '', broker: '', categoryId: defaultCat, currentValue: 0, ratio: 1 });
   saveState();
   renderETFs();
   setTimeout(function() {
@@ -1264,7 +1463,7 @@ function removeETF(id) {
 function updateETF(id, field, value) {
   state.etfs = state.etfs.map(function(e) {
     if (e.id !== id) return e;
-    var v = (['currentValue', 'weight'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
+    var v = (['currentValue', 'ratio'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
     return Object.assign({}, e, { [field]: v });
   });
   saveState();
@@ -1297,11 +1496,17 @@ function importJSON(event) {
     try {
       var parsed = JSON.parse(e.target.result);
       if (parsed.categories && parsed.etfs) {
+        // Migrate old "weight" field to "ratio"
+        if (parsed.etfs[0] && parsed.etfs[0].weight !== undefined && parsed.etfs[0].ratio === undefined) {
+          parsed.etfs = parsed.etfs.map(function(etf) {
+            return Object.assign({}, etf, { ratio: etf.weight, broker: etf.broker || '' });
+          });
+        }
         state = Object.assign({}, state, parsed);
         saveState();
         renderSetup();
         document.getElementById('results-panel').innerHTML =
-          '<div class="empty"><div class="empty-icon">\u2705</div><h3>Portfolio loaded</h3><p>Click \u201cCalculate Allocation\u201d to see the results.</p></div>';
+          '<div class="empty"><div class="empty-icon">✅</div><h3>Portfolio loaded</h3><p>Click "Calculate Allocation" to see the results.</p></div>';
       }
     } catch(err) {
       alert('Import error: Invalid JSON file.');
@@ -1315,21 +1520,23 @@ function importJSON(event) {
 // SAMPLE DATA
 // ===========================
 function loadSampleData() {
-  var catDev = genId();
-  var catEM = genId();
-  var catBonds = genId();
+  var catWorld     = genId();
+  var catQuality   = genId();
+  var catMomentum  = genId();
 
   state = {
     categories: [
-      { id: catDev,   name: 'Developed Markets',  targetPct: 70 },
-      { id: catEM,    name: 'Emerging Markets',    targetPct: 15 },
-      { id: catBonds, name: 'Bonds',               targetPct: 15 }
+      { id: catWorld,    name: 'World',    targetPct: 70 },
+      { id: catQuality,  name: 'Quality',  targetPct: 15 },
+      { id: catMomentum, name: 'Momentum', targetPct: 15 }
     ],
     etfs: [
-      { id: genId(), name: 'iShares MSCI World',         categoryId: catDev,   currentValue: 15000, weight: 70 },
-      { id: genId(), name: 'Vanguard S&P 500',           categoryId: catDev,   currentValue: 6000,  weight: 30 },
-      { id: genId(), name: 'iShares MSCI EM',            categoryId: catEM,    currentValue: 4200,  weight: 100 },
-      { id: genId(), name: 'Xtrackers EUR Gov Bond',     categoryId: catBonds, currentValue: 2800,  weight: 100 }
+      { id: genId(), name: 'iShares MSCI World',          broker: 'Broker A', categoryId: catWorld,    currentValue: 28000, ratio: 90 },
+      { id: genId(), name: 'iShares MSCI Emerging Markets', broker: 'Broker A', categoryId: catWorld,  currentValue: 3000,  ratio: 10 },
+      { id: genId(), name: 'iShares MSCI Quality',        broker: 'Broker A', categoryId: catQuality,  currentValue: 7000,  ratio: 1 },
+      { id: genId(), name: 'iShares MSCI Quality',        broker: 'Broker B', categoryId: catQuality,  currentValue: 2000,  ratio: 1 },
+      { id: genId(), name: 'Xtrackers MSCI Momentum',     broker: 'Broker A', categoryId: catMomentum, currentValue: 3500,  ratio: 1 },
+      { id: genId(), name: 'iShares MSCI Momentum',       broker: 'Broker B', categoryId: catMomentum, currentValue: 3500,  ratio: 1 }
     ],
     settings: { monthlySavings: 1000, simulationMonths: 24 }
   };
@@ -1343,6 +1550,15 @@ function loadSampleData() {
 // INIT
 // ===========================
 loadState();
+
+// Migrate old state: rename 'weight' → 'ratio'
+if (state.etfs && state.etfs.length > 0 && state.etfs[0].weight !== undefined && state.etfs[0].ratio === undefined) {
+  state.etfs = state.etfs.map(function(etf) {
+    return Object.assign({}, etf, { ratio: etf.weight, broker: etf.broker || '' });
+  });
+  saveState();
+}
+
 renderSetup();
 if (state.categories.length > 0 && state.etfs.length > 0) {
   calculate();

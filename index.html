@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF Rebalancing Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --header-bg: #0f172a;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    header {
+      background: var(--header-bg);
+      color: white;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header .header-sub {
+      font-size: 11px;
+      opacity: 0.5;
+      margin-left: 10px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      height: calc(100vh - 56px);
+    }
+
+    .setup-panel {
+      background: white;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .results-panel {
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* === Buttons === */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--bg); }
+    .btn-ghost { background: transparent; border: none; color: var(--text-muted); padding: 4px 6px; font-size: 13px; }
+    .btn-ghost:hover { color: var(--danger); background: #fee2e2; border-radius: 4px; }
+    .btn-calc {
+      background: var(--primary);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 13px 20px;
+      width: 100%;
+      justify-content: center;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .btn-calc:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+    .btn-add { background: var(--bg); border: 1px dashed var(--border); color: var(--text-muted); font-size: 12px; width: 100%; justify-content: center; padding: 8px; border-radius: 6px; }
+    .btn-add:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    /* === Setup Panel Sections === */
+    .section {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+    }
+
+    .section:last-of-type { border-bottom: none; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+    }
+
+    .section-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .badge-ok { background: #dcfce7; color: #15803d; }
+    .badge-warn { background: #fef3c7; color: #92400e; }
+    .badge-error { background: #fee2e2; color: #991b1b; }
+    .badge-neutral { background: var(--bg); color: var(--text-muted); }
+
+    /* === Tables === */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 5px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .data-table td {
+      padding: 4px 4px;
+      border-top: 1px solid var(--border);
+    }
+
+    .data-table tr:first-child td { border-top: none; }
+
+    .data-table tr:hover td { background: #f8fafc; }
+
+    /* === Inline Inputs === */
+    .input-inline {
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 5px 7px;
+      border-radius: 5px;
+      font-size: 13px;
+      color: var(--text);
+      width: 100%;
+      transition: all 0.1s;
+    }
+
+    .input-inline:hover { border-color: var(--border); background: white; }
+    .input-inline:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+
+    .input-inline.error-field { border-color: var(--danger) !important; background: #fff5f5 !important; }
+
+    select.input-inline { cursor: pointer; }
+
+    /* Color dot */
+    .color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* === Settings === */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .field-input {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      color: var(--text);
+      background: white;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+
+    .field-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+    /* === Validation messages === */
+    .msg {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 7px;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .msg-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .msg-warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .msg-icon { flex-shrink: 0; margin-top: 1px; }
+
+    /* === Cards === */
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* === Recommendation === */
+    .rec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .rec-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 12px;
+      text-align: center;
+      transition: box-shadow 0.15s;
+    }
+
+    .rec-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+    .rec-card .rc-cat {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .rec-card .rc-name {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rec-card .rc-amount {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+    }
+
+    .rec-card .rc-pct {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* === Allocation bars === */
+    .alloc-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .alloc-label {
+      width: 130px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
+    .alloc-bars {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .alloc-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .alloc-bar-track {
+      flex: 1;
+      height: 10px;
+      background: var(--bg);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .alloc-bar-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.5s ease;
+    }
+
+    .alloc-bar-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 48px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .alloc-bar-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .deviation-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .dev-pos { background: #dcfce7; color: #15803d; }
+    .dev-neg { background: #fee2e2; color: #991b1b; }
+    .dev-ok { background: #f1f5f9; color: var(--text-muted); }
+
+    /* === Simulation Table === */
+    .sim-wrap { overflow-x: auto; }
+
+    .sim-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .sim-table th {
+      background: var(--bg);
+      padding: 6px 10px;
+      text-align: right;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .sim-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); z-index: 1; }
+
+    .sim-table td {
+      padding: 6px 10px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sim-table td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      background: white;
+      z-index: 1;
+      font-weight: 500;
+    }
+
+    .sim-table tr:hover td { background: #f8fafc; }
+    .sim-table tr:hover td:first-child { background: #f8fafc; }
+    .sim-table .month-1 td { background: var(--primary-light) !important; font-weight: 700; }
+
+    .sim-table .total-row td {
+      background: var(--bg) !important;
+      font-weight: 700;
+      border-top: 2px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    /* === Summary Stats === */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .stat-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      flex: 1;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* === Charts === */
+    .chart-container {
+      position: relative;
+      height: 250px;
+    }
+
+    .charts-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* === Empty state === */
+    .empty {
+      text-align: center;
+      padding: 60px 40px;
+      color: var(--text-muted);
+    }
+
+    .empty .empty-icon { font-size: 52px; margin-bottom: 16px; }
+    .empty h3 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .empty p { font-size: 13px; max-width: 300px; margin: 0 auto; line-height: 1.6; }
+
+    /* === Misc === */
+    .text-muted { color: var(--text-muted); }
+    .text-right { text-align: right; }
+    .flex-center { display: flex; align-items: center; gap: 6px; }
+    .euro-val { font-variant-numeric: tabular-nums; }
+
+    /* === Validation panel in setup === */
+    .validation-area {
+      padding: 0 20px 12px;
+    }
+
+    /* === Scrollable setup === */
+    .setup-scroll {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .calc-footer {
+      padding: 16px 20px;
+      background: white;
+      border-top: 1px solid var(--border);
+      position: sticky;
+      bottom: 0;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; height: auto; }
+      .setup-panel { height: auto; }
+      .charts-2col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="flex-center">
+    <h1>ETF Rebalancing Tool</h1>
+    <span class="header-sub">v1.0</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="loadSampleData()">Beispieldaten</button>
+    <button class="btn btn-secondary" onclick="exportJSON()">↑ Export</button>
+    <label class="btn btn-secondary" style="cursor:pointer">
+      ↓ Import
+      <input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+    </label>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="setup-panel">
+    <div class="setup-scroll">
+      <div id="setup-categories" class="section"></div>
+      <div id="setup-etfs" class="section"></div>
+      <div id="setup-settings" class="section"></div>
+    </div>
+    <div class="calc-footer">
+      <div id="validation-area" class="validation-area" style="padding:0 0 12px;"></div>
+      <button class="btn btn-calc" onclick="calculate()">&#9654; Sparrate berechnen</button>
+    </div>
+  </div>
+
+  <div class="results-panel" id="results-panel">
+    <div class="empty">
+      <div class="empty-icon">📊</div>
+      <h3>Portfolio konfigurieren &amp; berechnen</h3>
+      <p>Füge deine Kategorien und ETFs hinzu, stelle die Sparrate ein und klicke auf „Sparrate berechnen".</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===========================
+// CONSTANTS
+// ===========================
+const PALETTE = [
+  '#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6',
+  '#06b6d4','#f97316','#84cc16','#ec4899','#6366f1',
+  '#14b8a6','#a855f7','#fb923c','#22c55e','#e879f9'
+];
+
+const LS_KEY = 'etf-rebalancing-v1';
+
+// ===========================
+// STATE
+// ===========================
+let state = {
+  categories: [],
+  etfs: [],
+  settings: { monthlySavings: 1000, simulationMonths: 12 }
+};
+
+let charts = {};
+
+// ===========================
+// PERSISTENCE
+// ===========================
+function saveState() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        state = { ...state, ...parsed };
+        return;
+      }
+    }
+  } catch(e) {}
+}
+
+// ===========================
+// HELPERS
+// ===========================
+function genId() {
+  return Math.random().toString(36).substring(2, 10);
+}
+
+function fmt(num, decimals = 2) {
+  if (num === null || num === undefined || isNaN(num)) return '–';
+  return num.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function fmtEur(num, decimals = 2) {
+  return fmt(num, decimals) + ' €';
+}
+
+function colorFor(cat) {
+  const idx = state.categories.findIndex(c => c.id === cat.id);
+  return PALETTE[idx % PALETTE.length];
+}
+
+function colorForId(catId) {
+  const idx = state.categories.findIndex(c => c.id === catId);
+  return PALETTE[idx % PALETTE.length];
+}
+
+// ===========================
+// VALIDATION
+// ===========================
+function validate() {
+  const errors = [];
+  const warnings = [];
+
+  if (state.categories.length === 0) {
+    errors.push('Keine Kategorien definiert.');
+  } else {
+    const totalPct = state.categories.reduce((s, c) => s + (parseFloat(c.targetPct) || 0), 0);
+    if (Math.abs(totalPct - 100) > 0.01) {
+      errors.push(`Ziel-Allokation ergibt ${fmt(totalPct, 1)}% (muss genau 100% sein).`);
+    }
+  }
+
+  if (state.etfs.length === 0) {
+    errors.push('Keine ETFs definiert.');
+  }
+
+  for (const cat of state.categories) {
+    const catEtfs = state.etfs.filter(e => e.categoryId === cat.id);
+    if (catEtfs.length === 0) {
+      warnings.push(`Kategorie „${cat.name}" enthält keine ETFs.`);
+    } else {
+      const totalW = catEtfs.reduce((s, e) => s + (parseFloat(e.weight) || 0), 0);
+      if (Math.abs(totalW - 100) > 0.01) {
+        errors.push(`ETF-Gewichtungen in „${cat.name}" ergeben ${fmt(totalW, 1)}% (muss 100% sein).`);
+      }
+    }
+  }
+
+  for (const etf of state.etfs) {
+    if (!state.categories.find(c => c.id === etf.categoryId)) {
+      errors.push(`ETF „${etf.name}" hat keine gültige Kategorie.`);
+    }
+  }
+
+  if (!(parseFloat(state.settings.monthlySavings) > 0)) {
+    errors.push('Monatliche Sparrate muss größer als 0 sein.');
+  }
+
+  return { errors, warnings, valid: errors.length === 0 };
+}
+
+// ===========================
+// ALGORITHM
+// ===========================
+function computeGlobalTargets() {
+  return state.etfs.map(etf => {
+    const cat = state.categories.find(c => c.id === etf.categoryId);
+    const globalFraction = cat
+      ? (parseFloat(cat.targetPct) / 100) * (parseFloat(etf.weight) / 100)
+      : 0;
+    return { ...etf, globalFraction };
+  });
+}
+
+function calcMonthAllocation(currentValues, etfTargets, savings) {
+  const total = Object.values(currentValues).reduce((a, b) => a + b, 0);
+  const newTotal = total + savings;
+
+  const needed = {};
+  let totalNeeded = 0;
+
+  for (const etf of etfTargets) {
+    const targetVal = etf.globalFraction * newTotal;
+    const curVal = currentValues[etf.id] || 0;
+    const need = Math.max(0, targetVal - curVal);
+    needed[etf.id] = need;
+    totalNeeded += need;
+  }
+
+  const alloc = {};
+  if (totalNeeded > 0) {
+    for (const etf of etfTargets) {
+      alloc[etf.id] = (needed[etf.id] / totalNeeded) * savings;
+    }
+  } else {
+    // All at/above target – distribute proportionally to target fractions
+    const totalFraction = etfTargets.reduce((s, e) => s + e.globalFraction, 0);
+    for (const etf of etfTargets) {
+      alloc[etf.id] = totalFraction > 0
+        ? (etf.globalFraction / totalFraction) * savings
+        : savings / etfTargets.length;
+    }
+  }
+
+  return alloc;
+}
+
+function simulate() {
+  const etfTargets = computeGlobalTargets();
+  const savings = parseFloat(state.settings.monthlySavings);
+  const months = parseInt(state.settings.simulationMonths);
+
+  let currentValues = {};
+  for (const etf of state.etfs) {
+    currentValues[etf.id] = parseFloat(etf.currentValue) || 0;
+  }
+
+  const results = [];
+
+  for (let m = 0; m < months; m++) {
+    const alloc = calcMonthAllocation(currentValues, etfTargets, savings);
+
+    // Update values
+    const newValues = { ...currentValues };
+    for (const [id, amt] of Object.entries(alloc)) {
+      newValues[id] = (newValues[id] || 0) + amt;
+    }
+    const newTotal = Object.values(newValues).reduce((a, b) => a + b, 0);
+
+    // Category-level deviations
+    const catDeviations = {};
+    for (const cat of state.categories) {
+      const catEtfs = etfTargets.filter(e => e.categoryId === cat.id);
+      const actualPct = catEtfs.reduce((s, e) => s + (newValues[e.id] || 0), 0) / newTotal * 100;
+      const targetPct = parseFloat(cat.targetPct);
+      catDeviations[cat.id] = {
+        actual: actualPct,
+        target: targetPct,
+        deviation: actualPct - targetPct
+      };
+    }
+
+    const maxDev = Math.max(...Object.values(catDeviations).map(d => Math.abs(d.deviation)));
+    const avgDev = Object.values(catDeviations).reduce((s, d) => s + Math.abs(d.deviation), 0)
+      / state.categories.length;
+
+    results.push({
+      month: m + 1,
+      alloc: { ...alloc },
+      values: { ...newValues },
+      total: newTotal,
+      catDeviations,
+      maxDev,
+      avgDev
+    });
+
+    currentValues = { ...newValues };
+  }
+
+  return results;
+}
+
+// ===========================
+// RENDER SETUP PANEL
+// ===========================
+function renderSetup() {
+  renderCategories();
+  renderETFs();
+  renderSettings();
+}
+
+function renderCategories() {
+  const totalPct = state.categories.reduce((s, c) => s + (parseFloat(c.targetPct) || 0), 0);
+  const diff = Math.abs(totalPct - 100);
+  let badgeCls = 'badge-neutral';
+  let badgeTxt = '–';
+  if (state.categories.length > 0) {
+    badgeTxt = fmt(totalPct, 1) + '%';
+    badgeCls = diff < 0.01 ? 'badge-ok' : (diff < 5 ? 'badge-warn' : 'badge-error');
+  }
+
+  let rows = '';
+  for (const cat of state.categories) {
+    const color = colorFor(cat);
+    rows += `
+      <tr>
+        <td style="width:18px; padding-left:8px;">
+          <span class="color-dot" style="background:${color}"></span>
+        </td>
+        <td>
+          <input class="input-inline" value="${escHtml(cat.name)}"
+            oninput="updateCategory('${cat.id}','name',this.value)" style="width:100%">
+        </td>
+        <td style="width:90px">
+          <div style="display:flex;align-items:center;gap:3px">
+            <input class="input-inline" type="number" min="0" max="100" step="0.1"
+              value="${cat.targetPct}"
+              oninput="updateCategory('${cat.id}','targetPct',this.value)"
+              style="width:55px; text-align:right">
+            <span style="color:var(--text-muted);font-size:12px">%</span>
+          </div>
+        </td>
+        <td style="width:30px; text-align:right">
+          <button class="btn btn-ghost" onclick="removeCategory('${cat.id}')" title="Löschen">✕</button>
+        </td>
+      </tr>`;
+  }
+
+  document.getElementById('setup-categories').innerHTML = `
+    <div class="section-header">
+      <span class="section-title">Kategorien</span>
+      <span class="section-badge ${badgeCls}">${badgeTxt} Ziel</span>
+    </div>
+    ${state.categories.length > 0 ? `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:18px"></th>
+            <th>Name</th>
+            <th style="width:90px">Ziel %</th>
+            <th style="width:30px"></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>` : '<p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">Noch keine Kategorien.</p>'}
+    <button class="btn btn-add" onclick="addCategory()">+ Kategorie hinzufügen</button>`;
+}
+
+function renderETFs() {
+  let rows = '';
+  for (const etf of state.etfs) {
+    const cat = state.categories.find(c => c.id === etf.categoryId);
+    const color = cat ? colorFor(cat) : '#ccc';
+    const catOptions = state.categories.map(c =>
+      `<option value="${c.id}" ${c.id === etf.categoryId ? 'selected' : ''}>${escHtml(c.name)}</option>`
+    ).join('');
+
+    rows += `
+      <tr>
+        <td>
+          <input class="input-inline" value="${escHtml(etf.name)}"
+            oninput="updateETF('${etf.id}','name',this.value)" style="width:100%;min-width:80px">
+        </td>
+        <td>
+          <select class="input-inline" onchange="updateETF('${etf.id}','categoryId',this.value)"
+            style="width:100%;min-width:80px">
+            <option value="">– Wählen –</option>
+            ${catOptions}
+          </select>
+        </td>
+        <td>
+          <input class="input-inline" type="number" min="0" step="100"
+            value="${etf.currentValue}"
+            oninput="updateETF('${etf.id}','currentValue',this.value)"
+            style="width:85px; text-align:right">
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:2px">
+            <input class="input-inline" type="number" min="0" max="100" step="1"
+              value="${etf.weight}"
+              oninput="updateETF('${etf.id}','weight',this.value)"
+              style="width:48px; text-align:right">
+            <span style="color:var(--text-muted);font-size:11px">%</span>
+          </div>
+        </td>
+        <td style="width:30px; text-align:right">
+          <button class="btn btn-ghost" onclick="removeETF('${etf.id}')" title="Löschen">✕</button>
+        </td>
+      </tr>`;
+  }
+
+  // Per-category weight summary
+  const catSummaries = state.categories.map(cat => {
+    const catEtfs = state.etfs.filter(e => e.categoryId === cat.id);
+    if (catEtfs.length === 0) return '';
+    const total = catEtfs.reduce((s, e) => s + (parseFloat(e.weight) || 0), 0);
+    const ok = Math.abs(total - 100) < 0.01;
+    const color = colorFor(cat);
+    return `<span style="font-size:11px;margin-right:10px;color:var(--text-muted)">
+      <span class="color-dot" style="background:${color};margin-right:3px;vertical-align:middle"></span>
+      <b>${escHtml(cat.name)}</b>:
+      <span style="color:${ok ? '#15803d' : '#dc2626'};font-weight:600">${fmt(total, 0)}%</span>
+    </span>`;
+  }).join('');
+
+  document.getElementById('setup-etfs').innerHTML = `
+    <div class="section-header">
+      <span class="section-title">ETFs</span>
+      ${state.etfs.length > 0 ? `<span style="font-size:11px;color:var(--text-muted)">${state.etfs.length} ETFs</span>` : ''}
+    </div>
+    ${catSummaries ? `<div style="margin-bottom:10px;display:flex;flex-wrap:wrap">${catSummaries}</div>` : ''}
+    ${state.etfs.length > 0 ? `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Kategorie</th>
+            <th style="text-align:right">Depot (€)</th>
+            <th style="text-align:right">Gew.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>` : '<p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">Noch keine ETFs.</p>'}
+    <button class="btn btn-add" onclick="addETF()">+ ETF hinzufügen</button>`;
+}
+
+function renderSettings() {
+  document.getElementById('setup-settings').innerHTML = `
+    <div class="section-header">
+      <span class="section-title">Einstellungen</span>
+    </div>
+    <div class="settings-grid">
+      <div class="field-group">
+        <label class="field-label">Monatliche Sparrate (€)</label>
+        <input class="field-input" type="number" min="1" step="50"
+          value="${state.settings.monthlySavings}"
+          oninput="updateSettings('monthlySavings', this.value)">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Simulationsmonate</label>
+        <input class="field-input" type="number" min="1" max="120" step="1"
+          value="${state.settings.simulationMonths}"
+          oninput="updateSettings('simulationMonths', this.value)">
+      </div>
+    </div>`;
+}
+
+// ===========================
+// RENDER RESULTS
+// ===========================
+function calculate() {
+  const { errors, warnings, valid } = validate();
+
+  // Render validation in footer area
+  const valArea = document.getElementById('validation-area');
+  let html = '';
+  for (const e of errors) {
+    html += `<div class="msg msg-error"><span class="msg-icon">⚠</span><span>${escHtml(e)}</span></div>`;
+  }
+  for (const w of warnings) {
+    html += `<div class="msg msg-warn"><span class="msg-icon">ℹ</span><span>${escHtml(w)}</span></div>`;
+  }
+  valArea.innerHTML = html;
+
+  const panel = document.getElementById('results-panel');
+
+  if (!valid) {
+    return;
+  }
+
+  const months = simulate();
+  renderResults(panel, months);
+}
+
+function renderResults(panel, months) {
+  const savings = parseFloat(state.settings.monthlySavings);
+  const totalPortfolio = state.etfs.reduce((s, e) => s + (parseFloat(e.currentValue) || 0), 0);
+  const etfTargets = computeGlobalTargets();
+  const m1 = months[0];
+
+  // ---- Stats row ----
+  const maxDevBefore = calcCurrentMaxDev();
+  const maxDevAfterM1 = m1.maxDev;
+  const devChange = maxDevAfterM1 - maxDevBefore;
+
+  const statsHtml = `
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-label">Depotwert (aktuell)</div>
+        <div class="stat-value">${fmtEur(totalPortfolio, 0)}</div>
+        <div class="stat-sub">${state.etfs.length} ETFs · ${state.categories.length} Kategorien</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Sparrate / Monat</div>
+        <div class="stat-value" style="color:var(--primary)">${fmtEur(savings, 0)}</div>
+        <div class="stat-sub">${state.settings.simulationMonths} Monate simuliert</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Max. Abweichung</div>
+        <div class="stat-value" style="color:${maxDevBefore < 2 ? 'var(--success)' : maxDevBefore < 5 ? 'var(--warning)' : 'var(--danger)'}">
+          ${fmt(maxDevBefore, 1)}%
+        </div>
+        <div class="stat-sub">
+          nach Monat 1:
+          <span style="color:${devChange < 0 ? 'var(--success)' : 'var(--danger)'};font-weight:600">
+            ${devChange < 0 ? '↓' : '↑'} ${fmt(Math.abs(devChange), 1)}%
+          </span>
+        </div>
+      </div>
+    </div>`;
+
+  // ---- Recommendation ----
+  let recCards = '';
+  for (const etf of state.etfs) {
+    const cat = state.categories.find(c => c.id === etf.categoryId);
+    const amount = m1.alloc[etf.id] || 0;
+    const pct = savings > 0 ? (amount / savings * 100) : 0;
+    const color = cat ? colorFor(cat) : '#ccc';
+    recCards += `
+      <div class="rec-card">
+        <div class="rc-cat" style="background:${color}20;color:${color}">${escHtml(cat ? cat.name : '?')}</div>
+        <div class="rc-name" title="${escHtml(etf.name)}">${escHtml(etf.name)}</div>
+        <div class="rc-amount">${fmt(amount, 0)}</div>
+        <div class="rc-pct">${fmt(pct, 1)}% · ${fmtEur(amount, 2)}</div>
+      </div>`;
+  }
+
+  const recHtml = `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Empfehlung für diesen Monat</div>
+          <div class="card-subtitle">Optimale Verteilung der ${fmtEur(savings, 0)} Sparrate</div>
+        </div>
+      </div>
+      <div class="rec-grid">${recCards}</div>
+    </div>`;
+
+  // ---- Allocation Overview ----
+  let allocRows = '';
+  for (const cat of state.categories) {
+    const catEtfs = etfTargets.filter(e => e.categoryId === cat.id);
+    const actualPct = catEtfs.reduce((s, e) => s + ((parseFloat(e.currentValue) || 0)), 0)
+      / (totalPortfolio || 1) * 100;
+    const targetPct = parseFloat(cat.targetPct);
+    const dev = actualPct - targetPct;
+    const devAbs = Math.abs(dev);
+    const devCls = devAbs < 1 ? 'dev-ok' : (dev > 0 ? 'dev-pos' : 'dev-neg');
+    const devLabel = devAbs < 0.05 ? '≈0' : (dev > 0 ? '+' : '') + fmt(dev, 1) + '%';
+    const color = colorFor(cat);
+
+    allocRows += `
+      <div class="alloc-row">
+        <div class="alloc-label" title="${escHtml(cat.name)}">
+          <span class="color-dot" style="background:${color};margin-right:6px;vertical-align:middle"></span>
+          ${escHtml(cat.name)}
+        </div>
+        <div class="alloc-bars">
+          <div class="alloc-bar-wrap">
+            <div style="width:35px;font-size:10px;color:var(--text-muted)">Ist</div>
+            <div class="alloc-bar-track">
+              <div class="alloc-bar-fill" style="width:${Math.min(actualPct, 100)}%;background:${color}cc"></div>
+            </div>
+            <div class="alloc-bar-label">${fmt(actualPct, 1)}%</div>
+          </div>
+          <div class="alloc-bar-wrap">
+            <div style="width:35px;font-size:10px;color:var(--text-muted)">Ziel</div>
+            <div class="alloc-bar-track">
+              <div class="alloc-bar-fill" style="width:${Math.min(targetPct, 100)}%;background:${color}44;border:1px dashed ${color}"></div>
+            </div>
+            <div class="alloc-bar-label">${fmt(targetPct, 1)}%</div>
+          </div>
+        </div>
+        <div>
+          <span class="deviation-badge ${devCls}">${devLabel}</span>
+        </div>
+      </div>`;
+  }
+
+  const allocHtml = `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Aktuelle vs. Ziel-Allokation</div>
+          <div class="card-subtitle">Abweichung vom Zielportfolio</div>
+        </div>
+      </div>
+      ${allocRows}
+    </div>`;
+
+  // ---- Charts ----
+  const chartsHtml = `
+    <div class="charts-2col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Allokationsverlauf</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-alloc"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Max. Abweichung über Zeit</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-dev"></canvas>
+        </div>
+      </div>
+    </div>`;
+
+  // ---- Simulation Table ----
+  const simHtml = buildSimTable(months, etfTargets, savings);
+
+  panel.innerHTML = statsHtml + recHtml + allocHtml + chartsHtml + simHtml;
+
+  // Render charts after DOM is ready
+  setTimeout(() => {
+    renderAllocChart(months, etfTargets);
+    renderDevChart(months);
+  }, 0);
+}
+
+function calcCurrentMaxDev() {
+  const total = state.etfs.reduce((s, e) => s + (parseFloat(e.currentValue) || 0), 0);
+  if (total === 0) return 0;
+  const etfTargets = computeGlobalTargets();
+  let maxDev = 0;
+  for (const cat of state.categories) {
+    const catEtfs = etfTargets.filter(e => e.categoryId === cat.id);
+    const actual = catEtfs.reduce((s, e) => s + (parseFloat(e.currentValue) || 0), 0) / total * 100;
+    const target = parseFloat(cat.targetPct);
+    maxDev = Math.max(maxDev, Math.abs(actual - target));
+  }
+  return maxDev;
+}
+
+function buildSimTable(months, etfTargets, savings) {
+  if (months.length === 0) return '';
+
+  const etfs = state.etfs;
+
+  // Header: ETF names
+  let headerCols = '<th>Monat</th>';
+  for (const etf of etfs) {
+    headerCols += `<th>${escHtml(etf.name)}</th>`;
+  }
+  headerCols += '<th>Gesamt</th><th>Max Abw.</th>';
+
+  let rows = '';
+  for (const m of months) {
+    const isM1 = m.month === 1;
+    rows += `<tr class="${isM1 ? 'month-1' : ''}">
+      <td>${isM1 ? '▶ ' : ''}Monat ${m.month}</td>`;
+    let rowTotal = 0;
+    for (const etf of etfs) {
+      const amt = m.alloc[etf.id] || 0;
+      rowTotal += amt;
+      rows += `<td class="euro-val">${fmt(amt, 0)}</td>`;
+    }
+    rows += `<td class="euro-val">${fmt(rowTotal, 0)}</td>`;
+    rows += `<td><span class="deviation-badge ${m.maxDev < 1 ? 'dev-ok' : m.maxDev < 3 ? 'dev-pos' : 'dev-neg'}">${fmt(m.maxDev, 1)}%</span></td>`;
+    rows += '</tr>';
+  }
+
+  return `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Simulation – Empfohlene Sparraten</div>
+          <div class="card-subtitle">Alle Beträge in €, Monat 1 ist die aktuelle Empfehlung</div>
+        </div>
+      </div>
+      <div class="sim-wrap">
+        <table class="sim-table">
+          <thead><tr>${headerCols}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ===========================
+// CHARTS
+// ===========================
+function destroyChart(id) {
+  if (charts[id]) {
+    charts[id].destroy();
+    delete charts[id];
+  }
+}
+
+function renderAllocChart(months, etfTargets) {
+  destroyChart('alloc');
+  const canvas = document.getElementById('chart-alloc');
+  if (!canvas) return;
+
+  const labels = months.map(m => `M${m.month}`);
+
+  const datasets = state.categories.map(cat => {
+    const color = colorFor(cat);
+    const data = months.map(m => {
+      const catEtfs = etfTargets.filter(e => e.categoryId === cat.id);
+      return catEtfs.reduce((s, e) => s + (m.values[e.id] || 0), 0) / m.total * 100;
+    });
+    return {
+      label: cat.name,
+      data,
+      borderColor: color,
+      backgroundColor: color + '22',
+      fill: false,
+      tension: 0.3,
+      pointRadius: months.length <= 24 ? 3 : 1,
+      borderWidth: 2
+    };
+  });
+
+  // Add target lines (dashed)
+  for (const cat of state.categories) {
+    const color = colorFor(cat);
+    datasets.push({
+      label: cat.name + ' (Ziel)',
+      data: months.map(() => parseFloat(cat.targetPct)),
+      borderColor: color,
+      borderDash: [5, 5],
+      borderWidth: 1,
+      pointRadius: 0,
+      fill: false,
+      tension: 0
+    });
+  }
+
+  charts['alloc'] = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 11 }, boxWidth: 12, padding: 8,
+            filter: item => !item.text.includes('(Ziel)') }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw, 1)}%`
+          }
+        }
+      },
+      scales: {
+        y: {
+          ticks: { callback: v => v + '%', font: { size: 11 } },
+          grid: { color: '#f1f5f9' }
+        },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderDevChart(months) {
+  destroyChart('dev');
+  const canvas = document.getElementById('chart-dev');
+  if (!canvas) return;
+
+  const labels = months.map(m => `M${m.month}`);
+  const maxDevs = months.map(m => m.maxDev);
+  const avgDevs = months.map(m => m.avgDev);
+
+  charts['dev'] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Max. Abweichung',
+          data: maxDevs,
+          borderColor: '#ef4444',
+          backgroundColor: '#ef444422',
+          fill: true,
+          tension: 0.3,
+          pointRadius: months.length <= 24 ? 3 : 1,
+          borderWidth: 2
+        },
+        {
+          label: 'Ø Abweichung',
+          data: avgDevs,
+          borderColor: '#f59e0b',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: months.length <= 24 ? 3 : 1,
+          borderWidth: 2,
+          borderDash: [4, 3]
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw, 2)}%`
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0,
+          ticks: { callback: v => v + '%', font: { size: 11 } },
+          grid: { color: '#f1f5f9' }
+        },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ===========================
+// STATE MUTATIONS
+// ===========================
+function addCategory() {
+  state.categories.push({ id: genId(), name: 'Neue Kategorie', targetPct: 0 });
+  saveState();
+  renderSetup();
+}
+
+function removeCategory(id) {
+  state.categories = state.categories.filter(c => c.id !== id);
+  // Unassign ETFs belonging to this category
+  state.etfs = state.etfs.map(e => e.categoryId === id ? { ...e, categoryId: '' } : e);
+  saveState();
+  renderSetup();
+}
+
+function updateCategory(id, field, value) {
+  state.categories = state.categories.map(c => c.id === id ? { ...c, [field]: field === 'targetPct' ? parseFloat(value) || 0 : value } : c);
+  saveState();
+  // Re-render only the badges (lightweight)
+  renderCategories();
+  renderETFs();
+}
+
+function addETF() {
+  const defaultCat = state.categories.length > 0 ? state.categories[0].id : '';
+  state.etfs.push({ id: genId(), name: 'Neuer ETF', categoryId: defaultCat, currentValue: 0, weight: 100 });
+  saveState();
+  renderETFs();
+}
+
+function removeETF(id) {
+  state.etfs = state.etfs.filter(e => e.id !== id);
+  saveState();
+  renderETFs();
+}
+
+function updateETF(id, field, value) {
+  state.etfs = state.etfs.map(e => {
+    if (e.id !== id) return e;
+    let v = value;
+    if (['currentValue', 'weight'].includes(field)) v = parseFloat(value) || 0;
+    return { ...e, [field]: v };
+  });
+  saveState();
+  renderETFs();
+}
+
+function updateSettings(field, value) {
+  state.settings = { ...state.settings, [field]: parseFloat(value) || 0 };
+  saveState();
+}
+
+// ===========================
+// IMPORT / EXPORT
+// ===========================
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rebalancing-portfolio.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (parsed.categories && parsed.etfs) {
+        state = { ...state, ...parsed };
+        saveState();
+        renderSetup();
+        document.getElementById('results-panel').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">✅</div>
+            <h3>Portfolio geladen</h3>
+            <p>Klicke auf „Sparrate berechnen" um die Ergebnisse zu sehen.</p>
+          </div>`;
+      }
+    } catch(err) {
+      alert('Fehler beim Importieren: Ungültige JSON-Datei.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ===========================
+// SAMPLE DATA
+// ===========================
+function loadSampleData() {
+  const catWorld = genId();
+  const catEM = genId();
+  const catBonds = genId();
+
+  state = {
+    categories: [
+      { id: catWorld, name: 'Aktien Industrieländer', targetPct: 70 },
+      { id: catEM,    name: 'Aktien Schwellenländer', targetPct: 15 },
+      { id: catBonds, name: 'Anleihen',               targetPct: 15 }
+    ],
+    etfs: [
+      { id: genId(), name: 'iShares MSCI World',         categoryId: catWorld, currentValue: 15000, weight: 70 },
+      { id: genId(), name: 'Vanguard S&P 500',           categoryId: catWorld, currentValue: 6000,  weight: 30 },
+      { id: genId(), name: 'iShares MSCI EM',            categoryId: catEM,    currentValue: 4200,  weight: 100 },
+      { id: genId(), name: 'Xtrackers EUR Gov Bond',     categoryId: catBonds, currentValue: 2800,  weight: 100 }
+    ],
+    settings: { monthlySavings: 1000, simulationMonths: 24 }
+  };
+
+  saveState();
+  renderSetup();
+  calculate();
+}
+
+// ===========================
+// ESCAPE HTML
+// ===========================
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ===========================
+// INIT
+// ===========================
+loadState();
+renderSetup();
+
+// Auto-calculate if state is already populated
+if (state.categories.length > 0 && state.etfs.length > 0) {
+  calculate();
+}
+</script>
+</body>
+</html>

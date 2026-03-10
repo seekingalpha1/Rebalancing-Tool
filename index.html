@@ -404,16 +404,15 @@ function escHtml(str) {
 }
 
 // Normalized weight (0-100) for each ETF within its category (based on ratio field)
-function normalizedWeights() {
-  var result = {};
-  state.categories.forEach(function(cat) {
-    var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
-    var totalRatio = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.ratio) || 0); }, 0);
-    catEtfs.forEach(function(etf) {
-      result[etf.id] = totalRatio > 0 ? (parseFloat(etf.ratio) || 0) / totalRatio * 100 : 0;
-    });
+// Returns name-groups for synthetic ETFs in a category: { key: { splitPct, combined } }
+function syntheticNameGroups(catEtfs, values) {
+  var nameGroups = {};
+  catEtfs.filter(function(e) { return parseFloat(e.splitPct) > 0; }).forEach(function(etf) {
+    var key = (etf.name || '').trim().toLowerCase();
+    if (!nameGroups[key]) nameGroups[key] = { splitPct: parseFloat(etf.splitPct), combined: 0 };
+    nameGroups[key].combined += (values[etf.id] || 0);
   });
-  return result;
+  return nameGroups;
 }
 
 // ===========================
@@ -424,29 +423,37 @@ function normalizedWeights() {
 // This handles the case where e.g. EM is 15% of portfolio but should be 7% within World.
 // Returns: { otherTotal, effectiveCatValues: {catId: value} }
 function computeOtherInfo(values) {
-  var normWeights = normalizedWeights();
   var otherTotal = 0;
   var effectiveCatValues = {};
 
   state.categories.forEach(function(cat) {
     var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
-    var total_c = catEtfs.reduce(function(s, e) { return s + (values[e.id] || 0); }, 0);
+    var directEtfs = catEtfs.filter(function(e) { return !(parseFloat(e.splitPct) > 0); });
 
-    if (catEtfs.length <= 1) {
-      // Single ETF in category → no within-category imbalance possible
-      effectiveCatValues[cat.id] = total_c;
-      return;
+    var directTotal = directEtfs.reduce(function(s, e) { return s + (values[e.id] || 0); }, 0);
+
+    // Group synthetic ETFs by name and compute min-scale
+    var nameGroups = syntheticNameGroups(catEtfs, values);
+    var groupKeys = Object.keys(nameGroups);
+    var syntheticValue = 0;
+    var otherFromCat = 0;
+
+    if (groupKeys.length > 0) {
+      var scale = Infinity;
+      groupKeys.forEach(function(k) {
+        var g = nameGroups[k];
+        if (g.splitPct > 0) scale = Math.min(scale, g.combined / (g.splitPct / 100));
+      });
+      if (!isFinite(scale)) scale = 0;
+
+      syntheticValue = scale;
+      groupKeys.forEach(function(k) {
+        var g = nameGroups[k];
+        otherFromCat += Math.max(0, g.combined - (g.splitPct / 100) * scale);
+      });
     }
 
-    var otherFromCat = 0;
-    catEtfs.forEach(function(etf) {
-      var w = (normWeights[etf.id] || 0) / 100;
-      var expected = w * total_c;
-      var actual = values[etf.id] || 0;
-      otherFromCat += Math.max(0, actual - expected);
-    });
-
-    effectiveCatValues[cat.id] = total_c - otherFromCat;
+    effectiveCatValues[cat.id] = directTotal + syntheticValue;
     otherTotal += otherFromCat;
   });
 
@@ -476,8 +483,23 @@ function validate() {
     if (catEtfs.length === 0) {
       warnings.push('Category "' + cat.name + '" has no ETFs assigned.');
     } else {
-      var totalRatio = catEtfs.reduce(function(s, e) { return s + (parseFloat(e.ratio) || 0); }, 0);
-      if (totalRatio <= 0) errors.push('All ETF ratios in "' + cat.name + '" are zero.');
+      var syntheticEtfs = catEtfs.filter(function(e) { return parseFloat(e.splitPct) > 0; });
+      if (syntheticEtfs.length > 0) {
+        var nameGroupSplits = {};
+        syntheticEtfs.forEach(function(e) {
+          var key = (e.name || '').trim().toLowerCase();
+          var sp = parseFloat(e.splitPct) || 0;
+          if (nameGroupSplits[key] === undefined) {
+            nameGroupSplits[key] = sp;
+          } else if (Math.abs(nameGroupSplits[key] - sp) > 0.01) {
+            errors.push('ETF "' + e.name + '" in "' + cat.name + '" has inconsistent Split % across brokers.');
+          }
+        });
+        var sumSplitPct = Object.keys(nameGroupSplits).reduce(function(s, k) { return s + nameGroupSplits[k]; }, 0);
+        if (Math.abs(sumSplitPct - 100) > 0.01) {
+          warnings.push('Split % values in "' + cat.name + '" sum to ' + fmt(sumSplitPct, 0) + '% (should be 100%).');
+        }
+      }
     }
   });
 
@@ -500,12 +522,41 @@ function validate() {
 // ALGORITHM: compute global target fraction per ETF
 // ===========================
 function computeGlobalTargets() {
-  var normWeights = normalizedWeights();
+  var values = {};
+  state.etfs.forEach(function(etf) { values[etf.id] = parseFloat(etf.currentValue) || 0; });
+  var otherInfo = computeOtherInfo(values);
+
   return state.etfs.map(function(etf) {
     var cat = state.categories.find(function(c) { return c.id === etf.categoryId; });
-    var globalFraction = cat
-      ? (parseFloat(cat.targetPct) / 100) * ((normWeights[etf.id] || 0) / 100)
-      : 0;
+    if (!cat) return Object.assign({}, etf, { globalFraction: 0 });
+
+    var f_c = parseFloat(cat.targetPct) / 100;
+    var effectiveTotal = otherInfo.effectiveCatValues[cat.id] || 0;
+    var splitPct = parseFloat(etf.splitPct) || 0;
+    var globalFraction;
+
+    if (splitPct === 0) {
+      // Direct ETF: fraction proportional to its share of effective category total
+      globalFraction = effectiveTotal > 0 ? (values[etf.id] / effectiveTotal) * f_c : 0;
+    } else {
+      // Synthetic ETF: find name-group and compute scale
+      var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
+      var nameGroups = syntheticNameGroups(catEtfs, values);
+      var scale = Infinity;
+      Object.keys(nameGroups).forEach(function(k) {
+        var g = nameGroups[k];
+        if (g.splitPct > 0) scale = Math.min(scale, g.combined / (g.splitPct / 100));
+      });
+      if (!isFinite(scale)) scale = 0;
+
+      var key = (etf.name || '').trim().toLowerCase();
+      var combinedValue = (nameGroups[key] || {}).combined || 0;
+      var syntheticShare = effectiveTotal > 0 ? scale / effectiveTotal : 0;
+      globalFraction = combinedValue > 0
+        ? (values[etf.id] / combinedValue) * (splitPct / 100) * syntheticShare * f_c
+        : 0;
+    }
+
     return Object.assign({}, etf, { globalFraction: globalFraction });
   });
 }
@@ -662,8 +713,6 @@ function renderCategories() {
 }
 
 function renderETFs() {
-  var normWeights = normalizedWeights();
-
   var rows = '';
   state.etfs.forEach(function(etf) {
     var isEnabled = etf.savingsEnabled !== false;
@@ -672,10 +721,10 @@ function renderETFs() {
       catOptions += '<option value="' + c.id + '"' + (c.id === etf.categoryId ? ' selected' : '') + '>' + escHtml(c.name) + '</option>';
     });
 
-    var effPct = normWeights[etf.id];
-    var effHint = (etf.categoryId && effPct !== undefined)
-      ? '<span class="weight-hint">= ' + fmt(effPct, 0) + '%</span>'
-      : '';
+    var sp = parseFloat(etf.splitPct) || 0;
+    var splitHint = sp > 0
+      ? '<span style="font-size:10px;color:var(--primary);white-space:nowrap">Synth.&nbsp;' + sp + '%</span>'
+      : '<span style="font-size:10px;color:var(--success);white-space:nowrap">Direct&nbsp;&#10003;</span>';
 
     rows += '<tr class="' + (isEnabled ? '' : 'etf-disabled') + '">' +
       // Savings enabled toggle
@@ -702,16 +751,17 @@ function renderETFs() {
       '<td style="min-width:85px">' +
         '<select class="input-inline" onchange="updateETF(\'' + etf.id + '\',\'categoryId\',this.value)" style="width:100%">' + catOptions + '</select>' +
       '</td>' +
-      // Ratio
-      '<td style="min-width:70px">' +
-        '<div style="display:flex;align-items:center;gap:2px">' +
-          '<input class="input-inline" type="number" inputmode="decimal" min="0" step="1" value="' + (etf.ratio || 0) + '"' +
-          ' oninput="stateEtfField(\'' + etf.id + '\',\'ratio\',this.value)" onblur="renderETFs()" style="width:42px;text-align:right" title="Relative ratio within category">' +
-          effHint +
+      // Split %
+      '<td style="min-width:80px">' +
+        '<div style="display:flex;align-items:center;gap:4px">' +
+          '<input class="input-inline" type="number" inputmode="decimal" min="0" max="100" step="1" value="' + sp + '"' +
+          ' oninput="stateEtfField(\'' + etf.id + '\',\'splitPct\',this.value)" onblur="renderETFs()" style="width:42px;text-align:right"' +
+          ' title="0 = direct to category. Enter % to form a synthetic pair (e.g. 90 for MSCI World, 10 for EM).">' +
+          splitHint +
         '</div>' +
       '</td>' +
       // Delete
-      '<td style="width:28px;text-align:right"><button class="btn btn-ghost" onclick="removeETF(\'' + etf.id + '\')" title="Delete">✕</button></td>' +
+      '<td style="width:28px;text-align:right"><button class="btn btn-ghost" onclick="removeETF(\'' + etf.id + '\')" title="Delete">&#10005;</button></td>' +
       '</tr>';
   });
 
@@ -720,9 +770,9 @@ function renderETFs() {
         '<thead><tr>' +
           '<th style="width:22px" title="Enable savings for this ETF">&#9654;</th>' +
           '<th>Name</th><th>Broker</th>' +
-          '<th style="text-align:right">Value (€)</th>' +
+          '<th style="text-align:right">Value (&euro;)</th>' +
           '<th>Category</th>' +
-          '<th style="text-align:right" title="Relative ratio within category — auto-normalized">Ratio</th>' +
+          '<th style="text-align:right" title="0 = direct to category; &gt;0 = % within synthetic pair">Split %</th>' +
           '<th></th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
@@ -738,8 +788,9 @@ function renderETFs() {
   document.getElementById('setup-etfs').innerHTML =
     '<div class="section-header"><span class="section-title">ETFs</span>' + countBadge + '</div>' +
     '<p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">' +
-      '&#9654; = savings enabled. <b>Ratio</b> = relative weight within category (auto-normalized). ' +
-      'Same ETF at two brokers? Add two rows and disable savings where appropriate.' +
+      '&#9654; = savings enabled. <b>Split %</b>: 0&nbsp;=&nbsp;direct contribution to category. ' +
+      'For a synthetic pair (e.g. MSCI World 90 + EM 10 &rarr; synthetic ACWI), enter each ETF\'s %. ' +
+      'ETFs with the same name are auto-grouped for the min-scale calculation.' +
     '</p>' +
     tableHtml +
     '<button class="btn btn-add" onclick="addETF()">+ Add ETF</button>';
@@ -1100,7 +1151,7 @@ function stateCatField(id, field, value) {
 function stateEtfField(id, field, value) {
   state.etfs = state.etfs.map(function(e) {
     if (e.id !== id) return e;
-    var v = (['currentValue', 'ratio'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
+    var v = (['currentValue', 'splitPct'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
     return Object.assign({}, e, { [field]: v });
   });
   saveState();
@@ -1141,7 +1192,7 @@ function removeCategory(id) {
 function addETF() {
   var newId = genId();
   var defaultCat = state.categories.length > 0 ? state.categories[0].id : '';
-  state.etfs.push({ id: newId, name: '', broker: '', categoryId: defaultCat, currentValue: 0, ratio: 1, savingsEnabled: true });
+  state.etfs.push({ id: newId, name: '', broker: '', categoryId: defaultCat, currentValue: 0, splitPct: 0, savingsEnabled: true });
   saveState();
   renderETFs();
   setTimeout(function() {
@@ -1162,7 +1213,7 @@ function removeETF(id) {
 function updateETF(id, field, value) {
   state.etfs = state.etfs.map(function(e) {
     if (e.id !== id) return e;
-    var v = (['currentValue', 'ratio'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
+    var v = (['currentValue', 'splitPct'].indexOf(field) !== -1) ? (parseFloat(value) || 0) : value;
     return Object.assign({}, e, { [field]: v });
   });
   saveState();
@@ -1211,6 +1262,8 @@ function migrateEtfs(etfs) {
   return etfs.map(function(etf) {
     var e = Object.assign({}, etf);
     if (e.weight !== undefined && e.ratio === undefined) e.ratio = e.weight;
+    // v3→v4: ratio field removed; treat old entries as direct (splitPct=0)
+    if (e.splitPct === undefined) e.splitPct = 0;
     if (e.broker === undefined) e.broker = '';
     if (e.savingsEnabled === undefined) e.savingsEnabled = true;
     return e;
@@ -1233,13 +1286,14 @@ function loadSampleData() {
       { id: catMomentum, name: 'Momentum', targetPct: 15 }
     ],
     etfs: [
-      { id: genId(), name: 'iShares MSCI World',           broker: 'Broker A', categoryId: catWorld,    currentValue: 28000, ratio: 90, savingsEnabled: true  },
-      { id: genId(), name: 'iShares MSCI Emerging Markets', broker: 'Broker A', categoryId: catWorld,    currentValue: 4500,  ratio: 10, savingsEnabled: true  },
-      { id: genId(), name: 'iShares MSCI Emerging Markets', broker: 'Broker B', categoryId: catWorld,    currentValue: 1500,  ratio: 10, savingsEnabled: false },
-      { id: genId(), name: 'iShares MSCI Quality',          broker: 'Broker A', categoryId: catQuality,  currentValue: 7000,  ratio: 1,  savingsEnabled: true  },
-      { id: genId(), name: 'iShares MSCI Quality',          broker: 'Broker B', categoryId: catQuality,  currentValue: 2000,  ratio: 1,  savingsEnabled: false },
-      { id: genId(), name: 'Xtrackers MSCI Momentum',       broker: 'Broker A', categoryId: catMomentum, currentValue: 3500,  ratio: 1,  savingsEnabled: true  },
-      { id: genId(), name: 'iShares MSCI Momentum',         broker: 'Broker B', categoryId: catMomentum, currentValue: 3500,  ratio: 1,  savingsEnabled: true  }
+      { id: genId(), name: 'iShares ACWI',                  broker: '',         categoryId: catWorld,    currentValue: 56000, splitPct: 0,  savingsEnabled: true  },
+      { id: genId(), name: 'iShares MSCI World',             broker: '',         categoryId: catWorld,    currentValue: 52063, splitPct: 90, savingsEnabled: true  },
+      { id: genId(), name: 'iShares MSCI Emerging Markets',  broker: 'Broker A', categoryId: catWorld,    currentValue: 5000,  splitPct: 10, savingsEnabled: true  },
+      { id: genId(), name: 'iShares MSCI Emerging Markets',  broker: 'Broker B', categoryId: catWorld,    currentValue: 1633,  splitPct: 10, savingsEnabled: false },
+      { id: genId(), name: 'iShares MSCI Quality',           broker: '',         categoryId: catQuality,  currentValue: 7000,  splitPct: 0,  savingsEnabled: true  },
+      { id: genId(), name: 'iShares MSCI Quality',           broker: 'Broker B', categoryId: catQuality,  currentValue: 2000,  splitPct: 0,  savingsEnabled: false },
+      { id: genId(), name: 'Xtrackers MSCI Momentum',        broker: '',         categoryId: catMomentum, currentValue: 3500,  splitPct: 0,  savingsEnabled: true  },
+      { id: genId(), name: 'iShares MSCI Momentum',          broker: '',         categoryId: catMomentum, currentValue: 3500,  splitPct: 0,  savingsEnabled: true  }
     ],
     settings: { monthlySavings: 1000, simulationMonths: 24 }
   };

@@ -17,14 +17,14 @@ Everything lives in `index.html`:
 state = {
   categories: [{ id, name, targetPct }],         // sum of targetPct must equal 100
   etfs: [{ id, name, broker, currentValue,        // broker is optional label
-            categoryId, ratio,                    // ratio = relative weight within category (auto-normalized)
+            categoryId, splitPct,                 // 0 = direct to category; >0 = % within synthetic pair
             savingsEnabled }],                    // false = ETF held constant, excluded from optimizer
   settings: { monthlySavings, simulationMonths }
 }
 ```
 
 - `localStorage` key: `etf-rebalancing-v3`
-- Migration shim in `migrateEtfs()` handles v1 (`weight`) and v2 exports
+- Migration shim in `migrateEtfs()` handles v1 (`weight`), v2, and v3 (`ratio`) exports
 
 ## Optimization Algorithm
 
@@ -43,26 +43,34 @@ x[i] = mu - a[i]   →  clamp negatives to 0, remove from active set, repeat
 
 Key functions: `solveOptimalSavings()`, `computeGlobalTargets()`, `simulate()`
 
-## "Other" Category
+## "Other" Category — Min-Scale Formula
 
-For categories with multiple ETFs, the within-category ratio imbalance is computed as:
+ETFs with `splitPct > 0` form a **synthetic pair** (e.g. MSCI World 90% + EM 10% → synthetic ACWI).
+ETFs with the same name in the same category are auto-grouped (handles multi-broker positions).
+
 ```
-Other = Σᵢ max(0, actualValue[i] − normalizedRatio[i] · totalCategoryValue)
+combinedValue[nameGroup] = sum of values of all ETFs with that name in the category
+scale = min over name-groups of (combinedValue[G] / (splitPct[G] / 100))
+syntheticValue = scale
+Other from category = Σ max(0, combinedValue[G] − splitPct[G]/100 × scale)
+effectiveCatValue = directTotal + syntheticValue
 ```
-This represents e.g. the EM surplus in a 90/10 MSCI World + EM split. Target = 0%. The optimizer naturally drives Other toward 0 by routing savings to the underweight ETF. Computed in `computeOtherInfo()`.
+
+Target for "Other" = 0%. The optimizer routes savings to the underweight synthetic ETF to drive Other → 0.
+Computed in `computeOtherInfo()`. Global fractions computed in `computeGlobalTargets()`.
 
 ## Key Functions
 
 | Function | Purpose |
 |---|---|
 | `solveOptimalSavings()` | QP water-filling optimizer |
-| `computeGlobalTargets()` | ETF global target fractions (category% × normalized ratio) |
-| `computeOtherInfo()` | Within-category ratio imbalance → "Other" bucket |
+| `computeGlobalTargets()` | ETF global target fractions (direct vs. synthetic per min-scale) |
+| `computeOtherInfo()` | Min-scale synthetic imbalance → "Other" bucket |
+| `syntheticNameGroups()` | Groups synthetic ETFs by name for min-scale calculation |
 | `simulate()` | Runs N-month simulation with constant allocation |
-| `normalizedWeights()` | Normalizes ETF ratios within each category to 0–100% |
 | `renderSetup()` | Re-renders all three setup sections |
 | `renderResults()` | Renders stats, cards, allocation bars, charts, sim table |
-| `migrateEtfs()` | Migrates old state formats (v1/v2 → v3) |
+| `migrateEtfs()` | Migrates old state formats (v1/v2/v3 → v4) |
 
 ## Design Conventions
 
@@ -87,3 +95,4 @@ This represents e.g. the EM surplus in a 90/10 MSCI World + EM split. Target = 0
 | v1.0 | `etf-rebalancing-v1` | Initial: categories, ETFs with `weight` field |
 | v2.0 | `etf-rebalancing-v2` | Dark mode, `ratio` field, broker field, constant savings |
 | v3.0 | `etf-rebalancing-v3` | QP optimizer, `savingsEnabled` checkbox, "Other" category |
+| v4.0 | `etf-rebalancing-v3` | Replace `ratio` with `splitPct`; min-scale synthetic-ACWI formula; multi-broker name-grouping |

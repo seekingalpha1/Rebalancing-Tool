@@ -526,20 +526,24 @@ function computeGlobalTargets() {
   state.etfs.forEach(function(etf) { values[etf.id] = parseFloat(etf.currentValue) || 0; });
   var otherInfo = computeOtherInfo(values);
 
-  return state.etfs.map(function(etf) {
+  var savings = parseFloat(state.settings.monthlySavings);
+  var months  = parseInt(state.settings.simulationMonths);
+  var totalCurrent = state.etfs.reduce(function(s, e) { return s + (values[e.id] || 0); }, 0);
+  var FT = totalCurrent + savings * months;
+
+  // ── Pass 1: raw proportional fraction for every ETF (same formula as before) ──
+  var rawFractions = {};
+  state.etfs.forEach(function(etf) {
     var cat = state.categories.find(function(c) { return c.id === etf.categoryId; });
-    if (!cat) return Object.assign({}, etf, { globalFraction: 0 });
+    if (!cat) { rawFractions[etf.id] = 0; return; }
 
     var f_c = parseFloat(cat.targetPct) / 100;
     var effectiveTotal = otherInfo.effectiveCatValues[cat.id] || 0;
     var splitPct = parseFloat(etf.splitPct) || 0;
-    var globalFraction;
 
     if (splitPct === 0) {
-      // Direct ETF: fraction proportional to its share of effective category total
-      globalFraction = effectiveTotal > 0 ? (values[etf.id] / effectiveTotal) * f_c : 0;
+      rawFractions[etf.id] = effectiveTotal > 0 ? (values[etf.id] / effectiveTotal) * f_c : 0;
     } else {
-      // Synthetic ETF: find name-group and compute scale
       var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
       var nameGroups = syntheticNameGroups(catEtfs, values);
       var scale = Infinity;
@@ -552,9 +556,44 @@ function computeGlobalTargets() {
       var key = (etf.name || '').trim().toLowerCase();
       var combinedValue = (nameGroups[key] || {}).combined || 0;
       var syntheticShare = effectiveTotal > 0 ? scale / effectiveTotal : 0;
-      globalFraction = combinedValue > 0
+      rawFractions[etf.id] = combinedValue > 0
         ? (values[etf.id] / combinedValue) * (splitPct / 100) * syntheticShare * f_c
         : 0;
+    }
+  });
+
+  // ── Pass 2: per-category scale factor for enabled ETFs ──
+  // Savings-disabled ETFs are frozen at their current absolute value.
+  // Enabled ETFs must collectively reach:  f_c - (frozenValue / FT)
+  // so that the category hits its target at month N.
+  var catScaleFactors = {};
+  state.categories.forEach(function(cat) {
+    var catEtfs = state.etfs.filter(function(e) { return e.categoryId === cat.id; });
+    var f_c = parseFloat(cat.targetPct) / 100;
+
+    var frozenValue = catEtfs
+      .filter(function(e) { return e.savingsEnabled === false; })
+      .reduce(function(s, e) { return s + (values[e.id] || 0); }, 0);
+    var enabledTarget = f_c - (FT > 0 ? frozenValue / FT : 0);
+
+    var enabledRawSum = catEtfs
+      .filter(function(e) { return e.savingsEnabled !== false; })
+      .reduce(function(s, e) { return s + (rawFractions[e.id] || 0); }, 0);
+
+    catScaleFactors[cat.id] = enabledRawSum > 0 ? enabledTarget / enabledRawSum : 1;
+  });
+
+  // ── Final: apply ──
+  return state.etfs.map(function(etf) {
+    var cat = state.categories.find(function(c) { return c.id === etf.categoryId; });
+    if (!cat) return Object.assign({}, etf, { globalFraction: 0 });
+
+    var globalFraction;
+    if (etf.savingsEnabled === false) {
+      // Disabled: plan for this ETF to stay at its current absolute value
+      globalFraction = FT > 0 ? values[etf.id] / FT : 0;
+    } else {
+      globalFraction = (rawFractions[etf.id] || 0) * (catScaleFactors[cat.id] || 1);
     }
 
     return Object.assign({}, etf, { globalFraction: globalFraction });
@@ -919,6 +958,13 @@ function renderResults(months) {
   var effCat = currentOtherInfo.effectiveCatValues;
   var effectiveTotal = totalPortfolio; // total is always the sum of all ETF values
 
+  // Final-state effective values for "After N months" bars
+  var finalOtherInfo = computeOtherInfo(mLast.values);
+  var finalEffCat    = finalOtherInfo.effectiveCatValues;
+  var finalTotal     = mLast.total;
+  var finalOtherPct  = finalTotal > 0 ? finalOtherInfo.otherTotal / finalTotal * 100 : 0;
+  var finalLabel     = 'M' + mLast.month;
+
   var allocRows = '';
   state.categories.forEach(function(cat) {
     var actualPct = effectiveTotal > 0 ? (effCat[cat.id] || 0) / effectiveTotal * 100 : 0;
@@ -928,31 +974,51 @@ function renderResults(months) {
     var devCls = devAbs < 1 ? 'dev-ok' : (dev > 0 ? 'dev-pos' : 'dev-neg');
     var devLabel = devAbs < 0.05 ? '≈0' : ((dev > 0 ? '+' : '') + fmt(dev, 1) + '%');
     var color = colorFor(cat);
-    allocRows += renderAllocRow(cat.name, color, actualPct, targetPct, devCls, devLabel);
+
+    var finalPct    = finalTotal > 0 ? (finalEffCat[cat.id] || 0) / finalTotal * 100 : 0;
+    var finalDev    = finalPct - targetPct;
+    var finalDevAbs = Math.abs(finalDev);
+    var finalDevCls = finalDevAbs < 1 ? 'dev-ok' : (finalDev > 0 ? 'dev-pos' : 'dev-neg');
+    var finalDevLabel = (finalDevAbs < 0.05 ? '≈0' : ((finalDev > 0 ? '+' : '') + fmt(finalDev, 1) + '%'));
+
+    allocRows += renderAllocRow(cat.name, color, actualPct, targetPct, devCls, devLabel, finalPct, finalDevCls, finalDevLabel, finalLabel);
   });
 
   // "Other" row
-  if (currentOtherPct > 0.01) {
-    var otherDevCls = currentOtherPct < 1 ? 'dev-ok' : 'dev-neg';
+  var showOther = currentOtherPct > 0.01 || finalOtherPct > 0.01;
+  if (showOther) {
+    var otherDevCls   = currentOtherPct < 1 ? 'dev-ok' : 'dev-neg';
+    var finalOtherDevCls = finalOtherPct < 1 ? 'dev-ok' : 'dev-neg';
+    var finalOtherBar = finalTotal > 0
+      ? '<div class="alloc-bar-wrap">' +
+          '<div style="width:42px;font-size:10px;color:var(--text-muted)">' + finalLabel + '</div>' +
+          '<div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:' + Math.min(finalOtherPct, 100) + '%;background:' + OTHER_COLOR + '99"></div></div>' +
+          '<div class="alloc-bar-label">' + fmt(finalOtherPct, 1) + '%</div>' +
+        '</div>'
+      : '';
     allocRows +=
       '<div class="alloc-row alloc-other">' +
-        '<div class="alloc-label" title="Within-category ratio imbalance">' +
+        '<div class="alloc-label" title="Synthetic-pair imbalance (min-scale)">' +
           '<span class="color-dot" style="background:' + OTHER_COLOR + ';margin-right:6px;vertical-align:middle"></span>' +
           'Other' +
         '</div>' +
         '<div class="alloc-bars">' +
           '<div class="alloc-bar-wrap">' +
-            '<div style="width:42px;font-size:10px;color:var(--text-muted)">Current</div>' +
+            '<div style="width:42px;font-size:10px;color:var(--text-muted)">Now</div>' +
             '<div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:' + Math.min(currentOtherPct, 100) + '%;background:' + OTHER_COLOR + '"></div></div>' +
             '<div class="alloc-bar-label">' + fmt(currentOtherPct, 1) + '%</div>' +
           '</div>' +
+          finalOtherBar +
           '<div class="alloc-bar-wrap">' +
             '<div style="width:42px;font-size:10px;color:var(--text-muted)">Target</div>' +
             '<div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:0%;background:' + OTHER_COLOR + '44;border:1px dashed ' + OTHER_COLOR + '"></div></div>' +
             '<div class="alloc-bar-label">0.0%</div>' +
           '</div>' +
         '</div>' +
-        '<div><span class="deviation-badge ' + otherDevCls + '">+' + fmt(currentOtherPct, 1) + '%</span></div>' +
+        '<div style="text-align:right">' +
+          '<span class="deviation-badge ' + otherDevCls + '">+' + fmt(currentOtherPct, 1) + '%</span>' +
+          '<br><span class="deviation-badge ' + finalOtherDevCls + '" style="font-size:10px;opacity:0.85">+' + fmt(finalOtherPct, 1) + '%</span>' +
+        '</div>' +
       '</div>';
   }
 
@@ -960,7 +1026,7 @@ function renderResults(months) {
     '<div class="card">' +
       '<div class="card-header"><div>' +
         '<div class="card-title">Current vs. Target Allocation</div>' +
-        '<div class="card-subtitle">"Other" = within-category ratio imbalance (target: 0%)</div>' +
+        '<div class="card-subtitle">"Other" = synthetic-pair imbalance (target: 0%). Top badge = now, bottom = after ' + mLast.month + ' months.</div>' +
       '</div></div>' +
       allocRows +
     '</div>';
@@ -980,7 +1046,21 @@ function renderResults(months) {
   }, 0);
 }
 
-function renderAllocRow(name, color, actualPct, targetPct, devCls, devLabel) {
+// finalPct / finalDevCls / finalDevLabel are optional; pass null to omit the "After N months" bar
+function renderAllocRow(name, color, actualPct, targetPct, devCls, devLabel, finalPct, finalDevCls, finalDevLabel, finalLabel) {
+  var finalBar = '';
+  if (finalPct !== null && finalPct !== undefined) {
+    finalBar =
+      '<div class="alloc-bar-wrap">' +
+        '<div style="width:42px;font-size:10px;color:var(--text-muted)">' + escHtml(finalLabel || 'Final') + '</div>' +
+        '<div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:' + Math.min(Math.max(finalPct, 0), 100) + '%;background:' + color + '99"></div></div>' +
+        '<div class="alloc-bar-label">' + fmt(finalPct, 1) + '%</div>' +
+      '</div>';
+  }
+  var badgeHtml = '<span class="deviation-badge ' + devCls + '">' + devLabel + '</span>';
+  if (finalPct !== null && finalPct !== undefined) {
+    badgeHtml += '<br><span class="deviation-badge ' + finalDevCls + '" style="font-size:10px;opacity:0.85">' + finalDevLabel + '</span>';
+  }
   return '<div class="alloc-row">' +
     '<div class="alloc-label" title="' + escHtml(name) + '">' +
       '<span class="color-dot" style="background:' + color + ';margin-right:6px;vertical-align:middle"></span>' +
@@ -988,17 +1068,18 @@ function renderAllocRow(name, color, actualPct, targetPct, devCls, devLabel) {
     '</div>' +
     '<div class="alloc-bars">' +
       '<div class="alloc-bar-wrap">' +
-        '<div style="width:42px;font-size:10px;color:var(--text-muted)">Current</div>' +
+        '<div style="width:42px;font-size:10px;color:var(--text-muted)">Now</div>' +
         '<div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:' + Math.min(actualPct, 100) + '%;background:' + color + 'cc"></div></div>' +
         '<div class="alloc-bar-label">' + fmt(actualPct, 1) + '%</div>' +
       '</div>' +
+      finalBar +
       '<div class="alloc-bar-wrap">' +
         '<div style="width:42px;font-size:10px;color:var(--text-muted)">Target</div>' +
         '<div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:' + Math.min(targetPct, 100) + '%;background:' + color + '44;border:1px dashed ' + color + '"></div></div>' +
         '<div class="alloc-bar-label">' + fmt(targetPct, 1) + '%</div>' +
       '</div>' +
     '</div>' +
-    '<div><span class="deviation-badge ' + devCls + '">' + devLabel + '</span></div>' +
+    '<div style="text-align:right">' + badgeHtml + '</div>' +
     '</div>';
 }
 
